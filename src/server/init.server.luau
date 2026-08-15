@@ -1,36 +1,23 @@
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Config = require(ReplicatedStorage.Shared.Config)
+--[[
+	Server entry point. Creates remotes and wires them to service modules.
+	Keep logic out of this file — it should only glue things together.
+]]
 
--- create the event the client uses to ask for a roll
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local RollService = require(script.RollService)
+
 local rollEvent = Instance.new("RemoteEvent")
 rollEvent.Name = "RollEvent"
 rollEvent.Parent = ReplicatedStorage
 
--- add up all the weights once
-local totalWeight = 0
-for _, rarity in Config.Rarities do
-	totalWeight += rarity.weight
-end
-
-local function rollRarity()
-	local ticket = math.random(1, totalWeight)
-	local passed = 0
-	for _, rarity in Config.Rarities do
-		passed += rarity.weight
-		if ticket <= passed then
-			return rarity
-		end
-	end
-end
-
-local function rollRelic(rarityName)
-	local pool = Config.Relics[rarityName]
-	return pool[math.random(1, #pool)]
-end
-
 rollEvent.OnServerEvent:Connect(function(player)
-	local rarity = rollRarity()
-	local relic = rollRelic(rarity.name)
-	print(player.Name, "salvaged:", relic, "(" .. rarity.name .. ")")
-	rollEvent:FireClient(player, relic, rarity.name)
+	local result = RollService.tryRoll(player)
+	if result == nil then
+		-- On cooldown — silently ignore. The client will get its own
+		-- cooldown UI later; the server just refuses to be spammed.
+		return
+	end
+	print(player.Name, "salvaged:", result.relic, "(" .. result.rarityName .. ")")
+	rollEvent:FireClient(player, result.relic, result.rarityName)
 end)
