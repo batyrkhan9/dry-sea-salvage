@@ -3,6 +3,9 @@ local Config = {}
 -- seconds a player must wait between salvage rolls (enforced on the server)
 Config.RollCooldown = 2
 
+-- seconds between automatic saves of each player's data
+Config.AutosaveInterval = 120
+
 -- weight = how many "tickets" this rarity has in the lottery
 Config.Rarities = {
 	{ name = "Rust",       weight = 500, color = Color3.fromRGB(150, 90, 50) },

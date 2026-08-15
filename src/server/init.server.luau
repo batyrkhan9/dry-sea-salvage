@@ -6,6 +6,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RollService = require(script.RollService)
+local InventoryService = require(script.InventoryService)
+require(script.DataService) -- starts load/save lifecycle on require
 
 local rollEvent = Instance.new("RemoteEvent")
 rollEvent.Name = "RollEvent"
@@ -18,6 +20,7 @@ rollEvent.OnServerEvent:Connect(function(player)
 		-- cooldown UI later; the server just refuses to be spammed.
 		return
 	end
-	print(player.Name, "salvaged:", result.relic, "(" .. result.rarityName .. ")")
+	local count = InventoryService.addRelic(player, result.relic)
+	print(player.Name, "salvaged:", result.relic, "(" .. result.rarityName .. ") — now owns", count or "?")
 	rollEvent:FireClient(player, result.relic, result.rarityName)
 end)
