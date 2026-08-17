@@ -9,8 +9,10 @@ local UserInputService = game:GetService("UserInputService")
 local RollUI = require(script.RollUI)
 local InventoryUI = require(script.InventoryUI)
 local CollectionUI = require(script.CollectionUI)
+local AnnouncementUI = require(script.AnnouncementUI)
 
 local rollEvent = ReplicatedStorage:WaitForChild("RollEvent")
+local announceEvent = ReplicatedStorage:WaitForChild("AnnounceEvent")
 local mergeFunction = ReplicatedStorage:WaitForChild("MergeFunction")
 local getInventoryFunction = ReplicatedStorage:WaitForChild("GetInventoryFunction")
 local getCollectionFunction = ReplicatedStorage:WaitForChild("GetCollectionFunction")
@@ -46,6 +48,11 @@ InventoryUI.onMergeRequested(function(relicName)
 	end
 	InventoryUI.refreshIfOpen()
 	CollectionUI.refreshIfOpen() -- a merge can discover a new relic too
+end)
+
+-- Someone on the server pulled something rare -> banner for everyone
+announceEvent.OnClientEvent:Connect(function(playerName, relic, rarityName)
+	AnnouncementUI.show(playerName, relic, rarityName)
 end)
 
 -- Keyboard shortcut: R rolls, sharing the same cooldown gate as the button.

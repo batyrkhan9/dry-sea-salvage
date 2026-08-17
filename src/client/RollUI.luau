@@ -15,6 +15,7 @@ local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local RelicUtil = require(ReplicatedStorage.Shared.RelicUtil)
+local Sound = require(script.Parent.Sound)
 
 local RollUI = {}
 
@@ -86,6 +87,16 @@ rarityLabel.Font = Enum.Font.Gotham
 rarityLabel.TextScaled = true
 rarityLabel.Parent = popup
 
+-- Full-screen color flash used for high-tier pulls. Sits behind the popup
+-- and ignores input (it's a Frame, not a button — frames don't sink clicks).
+local flash = Instance.new("Frame")
+flash.Name = "RarityFlash"
+flash.Size = UDim2.fromScale(1, 1)
+flash.BackgroundTransparency = 1
+flash.BorderSizePixel = 0
+flash.ZIndex = 0
+flash.Parent = screenGui
+
 -- ---------- cooldown handling ----------
 
 local onCooldown = false
@@ -125,6 +136,7 @@ function RollUI.tryRequestRoll()
 	if onCooldown then
 		return
 	end
+	Sound.play(Config.Sounds.ButtonClick)
 	task.spawn(runCooldownDisplay)
 	if requestCallback then
 		requestCallback()
@@ -138,14 +150,21 @@ function RollUI.showResult(relic: string, rarityName: string)
 	local showId = currentShowId
 
 	local color = RelicUtil.rarityColor(rarityName)
+	-- 1 = Rust ... 6 = What the Sea Left; drives how hard the effects hit.
+	local tier = RelicUtil.rarityIndex(rarityName) or 1
+
 	relicLabel.Text = relic
 	rarityLabel.Text = rarityName
 	rarityLabel.TextColor3 = color
 	popupStroke.Color = color
 
-	-- Pop-in: start slightly small and transparent, tween to full size.
+	Sound.play(Config.Sounds.RollResult[rarityName] or 0)
+
+	-- Pop-in: start small and transparent, tween to full size. Higher
+	-- tiers start smaller, so the same tween reads as a bigger "pop".
 	popup.Visible = true
-	popup.Size = UDim2.fromOffset(260, 90)
+	local startScale = 1 - 0.1 * tier -- Rust 0.9x ... top tier 0.4x
+	popup.Size = UDim2.fromOffset(320 * startScale, 110 * startScale)
 	popup.BackgroundTransparency = 0.6
 	local tweenIn = TweenService:Create(
 		popup,
@@ -153,6 +172,30 @@ function RollUI.showResult(relic: string, rarityName: string)
 		{ Size = UDim2.fromOffset(320, 110), BackgroundTransparency = 0.15 }
 	)
 	tweenIn:Play()
+
+	-- Storm and up: flash the whole screen in the rarity color.
+	if tier >= 4 then
+		flash.BackgroundColor3 = color
+		flash.BackgroundTransparency = 0.7
+		TweenService:Create(
+			flash,
+			TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{ BackgroundTransparency = 1 }
+		):Play()
+	end
+
+	-- Ghost Ship and up: shake the popup for a moment.
+	if tier >= 5 then
+		task.spawn(function()
+			local basePosition = popup.Position
+			local elapsed = 0
+			while elapsed < 0.45 do
+				elapsed += task.wait()
+				popup.Position = basePosition + UDim2.fromOffset(math.random(-4, 4), math.random(-4, 4))
+			end
+			popup.Position = basePosition
+		end)
+	end
 
 	-- Hide after a moment — unless another roll replaced this popup already.
 	task.delay(2.5, function()

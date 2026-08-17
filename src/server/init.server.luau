@@ -5,6 +5,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Config = require(ReplicatedStorage.Shared.Config)
 local RollService = require(script.RollService)
 local InventoryService = require(script.InventoryService)
 local MergeService = require(script.MergeService)
@@ -25,6 +26,18 @@ local getInventoryFunction = Instance.new("RemoteFunction")
 getInventoryFunction.Name = "GetInventoryFunction"
 getInventoryFunction.Parent = ReplicatedStorage
 
+-- Server -> ALL clients: someone pulled a top-tier relic.
+local announceEvent = Instance.new("RemoteEvent")
+announceEvent.Name = "AnnounceEvent"
+announceEvent.Parent = ReplicatedStorage
+
+-- Fires the server-wide banner if this rarity is announcement-worthy.
+local function maybeAnnounce(player, relic: string, rarityName: string)
+	if Config.AnnounceRarities[rarityName] then
+		announceEvent:FireAllClients(player.Name, relic, rarityName)
+	end
+end
+
 -- Client asks which relics it has ever discovered (for the index).
 local getCollectionFunction = Instance.new("RemoteFunction")
 getCollectionFunction.Name = "GetCollectionFunction"
@@ -40,6 +53,7 @@ rollEvent.OnServerEvent:Connect(function(player)
 	local count = InventoryService.addRelic(player, result.relic)
 	print(player.Name, "salvaged:", result.relic, "(" .. result.rarityName .. ") — now owns", count or "?")
 	rollEvent:FireClient(player, result.relic, result.rarityName)
+	maybeAnnounce(player, result.relic, result.rarityName)
 end)
 
 mergeFunction.OnServerInvoke = function(player, relicName)
@@ -51,6 +65,7 @@ mergeFunction.OnServerInvoke = function(player, relicName)
 		return nil
 	end
 	print(player.Name, "merged into:", result.relic, "(" .. result.rarityName .. ")")
+	maybeAnnounce(player, result.relic, result.rarityName)
 	return result
 end
 
