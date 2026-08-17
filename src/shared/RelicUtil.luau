@@ -1,0 +1,59 @@
+--[[
+	RelicUtil — pure lookup helpers over Config, no state, no side effects.
+	Shared because both the server (validating merges) and the client
+	(deciding which MERGE buttons to show) need the same answers.
+]]
+
+local Config = require(script.Parent.Config)
+
+local RelicUtil = {}
+
+-- Build reverse lookups once at require time.
+local rarityIndexByName: { [string]: number } = {}
+for index, rarity in Config.Rarities do
+	rarityIndexByName[rarity.name] = index
+end
+
+local rarityNameByRelic: { [string]: string } = {}
+for rarityName, relics in Config.Relics do
+	for _, relicName in relics do
+		rarityNameByRelic[relicName] = rarityName
+	end
+end
+
+-- The rarity a relic belongs to, or nil for unknown names (important on the
+-- server: relic names can arrive from the client and must not be trusted).
+function RelicUtil.rarityOf(relicName: string): string?
+	return rarityNameByRelic[relicName]
+end
+
+-- Position of a rarity in the tier ladder (1 = most common), or nil.
+function RelicUtil.rarityIndex(rarityName: string): number?
+	return rarityIndexByName[rarityName]
+end
+
+-- The next tier up from the given rarity, or nil if it's the top tier.
+function RelicUtil.nextRarityName(rarityName: string): string?
+	local index = rarityIndexByName[rarityName]
+	if index == nil or index >= #Config.Rarities then
+		return nil
+	end
+	return Config.Rarities[index + 1].name
+end
+
+-- True if this relic can be merged at all (known relic, not top tier).
+function RelicUtil.isMergeable(relicName: string): boolean
+	local rarityName = rarityNameByRelic[relicName]
+	return rarityName ~= nil and RelicUtil.nextRarityName(rarityName) ~= nil
+end
+
+-- The display color of a rarity (white fallback for unknown names).
+function RelicUtil.rarityColor(rarityName: string): Color3
+	local index = rarityIndexByName[rarityName]
+	if index == nil then
+		return Color3.new(1, 1, 1)
+	end
+	return Config.Rarities[index].color
+end
+
+return RelicUtil

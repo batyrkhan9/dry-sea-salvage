@@ -14,22 +14,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local RelicUtil = require(ReplicatedStorage.Shared.RelicUtil)
 
 local RollUI = {}
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
-
--- Look up a rarity's color from config (fallback white if a name ever
--- doesn't match, so a config typo shows a wrong color, not an error).
-local function rarityColor(rarityName: string): Color3
-	for _, rarity in Config.Rarities do
-		if rarity.name == rarityName then
-			return rarity.color
-		end
-	end
-	return Color3.new(1, 1, 1)
-end
 
 -- ---------- building the static UI ----------
 
@@ -147,7 +137,7 @@ function RollUI.showResult(relic: string, rarityName: string)
 	currentShowId += 1
 	local showId = currentShowId
 
-	local color = rarityColor(rarityName)
+	local color = RelicUtil.rarityColor(rarityName)
 	relicLabel.Text = relic
 	rarityLabel.Text = rarityName
 	rarityLabel.TextColor3 = color

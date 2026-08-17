@@ -22,6 +22,24 @@ function InventoryService.addRelic(player: Player, relicName: string): number?
 	return newCount
 end
 
+-- Removes `amount` copies of a relic. Fails (returns false) if the player
+-- doesn't own that many — it never lets a count go negative.
+function InventoryService.removeRelic(player: Player, relicName: string, amount: number): boolean
+	local data = DataService.get(player)
+	if data == nil then
+		return false
+	end
+	local owned = data.inventory[relicName] or 0
+	if owned < amount then
+		return false
+	end
+	local remaining = owned - amount
+	-- Store nil instead of 0 so the inventory table only ever contains
+	-- relics the player actually owns.
+	data.inventory[relicName] = if remaining > 0 then remaining else nil
+	return true
+end
+
 -- Read-only view for UI / merge logic later. Callers must not mutate it.
 function InventoryService.getInventory(player: Player): { [string]: number }?
 	local data = DataService.get(player)

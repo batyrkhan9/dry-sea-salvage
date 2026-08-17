@@ -6,6 +6,9 @@ Config.RollCooldown = 2
 -- seconds between automatic saves of each player's data
 Config.AutosaveInterval = 120
 
+-- how many copies of the same relic it takes to merge into the next tier
+Config.MergeCost = 3
+
 -- weight = how many "tickets" this rarity has in the lottery
 Config.Rarities = {
 	{ name = "Rust",       weight = 500, color = Color3.fromRGB(150, 90, 50) },
