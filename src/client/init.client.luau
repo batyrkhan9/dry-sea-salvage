@@ -8,20 +8,28 @@ local UserInputService = game:GetService("UserInputService")
 
 local RollUI = require(script.RollUI)
 local InventoryUI = require(script.InventoryUI)
+local CollectionUI = require(script.CollectionUI)
 
 local rollEvent = ReplicatedStorage:WaitForChild("RollEvent")
 local mergeFunction = ReplicatedStorage:WaitForChild("MergeFunction")
 local getInventoryFunction = ReplicatedStorage:WaitForChild("GetInventoryFunction")
+local getCollectionFunction = ReplicatedStorage:WaitForChild("GetCollectionFunction")
 
 -- UI wants to roll -> ask the server
 RollUI.onRollRequested(function()
 	rollEvent:FireServer()
 end)
 
--- Server answered a roll -> show the popup, update the relics panel
+-- Server answered a roll -> show the popup, update any open panels
 rollEvent.OnClientEvent:Connect(function(relic, rarityName)
 	RollUI.showResult(relic, rarityName)
 	InventoryUI.refreshIfOpen()
+	CollectionUI.refreshIfOpen()
+end)
+
+-- Index panel asks for the discovered set -> fetch from the server
+CollectionUI.onCollectionRequested(function()
+	return getCollectionFunction:InvokeServer()
 end)
 
 -- Relics panel asks for the inventory -> fetch from the server
@@ -37,6 +45,7 @@ InventoryUI.onMergeRequested(function(relicName)
 		RollUI.showResult(result.relic, result.rarityName)
 	end
 	InventoryUI.refreshIfOpen()
+	CollectionUI.refreshIfOpen() -- a merge can discover a new relic too
 end)
 
 -- Keyboard shortcut: R rolls, sharing the same cooldown gate as the button.

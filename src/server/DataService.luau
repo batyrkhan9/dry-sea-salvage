@@ -27,14 +27,36 @@ local MAX_RETRIES = 3
 local store = DataStoreService:GetDataStore(STORE_NAME)
 
 export type PlayerData = {
-	inventory: { [string]: number }, -- relic name -> how many owned
+	inventory: { [string]: number }, -- relic name -> how many owned right now
+	discovered: { [string]: boolean }, -- relic name -> ever found (survives merging away)
 }
 
 local function defaultData(): PlayerData
 	-- Built fresh each call so two players never share the same table.
 	return {
 		inventory = {},
+		discovered = {},
 	}
+end
+
+-- Fills in any top-level fields that exist in the default shape but are
+-- missing from stored data. This is how old saves survive new features:
+-- data saved before `discovered` existed gets an empty set added here
+-- instead of crashing code that expects it.
+local function reconcile(stored: any): PlayerData
+	local default = defaultData()
+	for key, defaultValue in default :: any do
+		if stored[key] == nil then
+			stored[key] = defaultValue
+		end
+	end
+	-- Owning a relic implies having discovered it. This also migrates
+	-- saves that predate `discovered` — their index starts from what
+	-- they currently hold instead of empty.
+	for relicName in stored.inventory do
+		stored.discovered[relicName] = true
+	end
+	return stored
 end
 
 type Session = {
@@ -76,7 +98,7 @@ local function load(player: Player)
 	end)
 
 	local session: Session = {
-		data = stored or defaultData(),
+		data = if stored ~= nil then reconcile(stored) else defaultData(),
 		loadFailed = not ok,
 	}
 	sessions[player.UserId] = session

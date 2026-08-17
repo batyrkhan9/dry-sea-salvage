@@ -25,6 +25,11 @@ local getInventoryFunction = Instance.new("RemoteFunction")
 getInventoryFunction.Name = "GetInventoryFunction"
 getInventoryFunction.Parent = ReplicatedStorage
 
+-- Client asks which relics it has ever discovered (for the index).
+local getCollectionFunction = Instance.new("RemoteFunction")
+getCollectionFunction.Name = "GetCollectionFunction"
+getCollectionFunction.Parent = ReplicatedStorage
+
 rollEvent.OnServerEvent:Connect(function(player)
 	local result = RollService.tryRoll(player)
 	if result == nil then
@@ -52,4 +57,8 @@ end
 getInventoryFunction.OnServerInvoke = function(player)
 	-- Remotes serialize tables by copy, so the client can't mutate our data.
 	return InventoryService.getInventory(player) or {}
+end
+
+getCollectionFunction.OnServerInvoke = function(player)
+	return InventoryService.getDiscovered(player) or {}
 end

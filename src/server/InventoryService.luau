@@ -19,7 +19,16 @@ function InventoryService.addRelic(player: Player, relicName: string): number?
 	end
 	local newCount = (data.inventory[relicName] or 0) + 1
 	data.inventory[relicName] = newCount
+	-- Permanent record for the collection index — never un-set, even if
+	-- every copy is later merged away.
+	data.discovered[relicName] = true
 	return newCount
+end
+
+-- Set of every relic the player has ever found (for the collection index).
+function InventoryService.getDiscovered(player: Player): { [string]: boolean }?
+	local data = DataService.get(player)
+	return data and data.discovered
 end
 
 -- Removes `amount` copies of a relic. Fails (returns false) if the player
