@@ -160,13 +160,13 @@ function CollectionUI.refresh()
 		local rarityName = Config.Rarities[tierIndex].name
 		order += 1
 		makeTierHeader(rarityName, order)
-		for _, relicName in Config.Relics[rarityName] do
-			local found = discovered[relicName] == true
+		for _, relic in Config.Relics[rarityName] do
+			local found = discovered[relic.name] == true
 			if found then
 				foundCount += 1
 			end
 			order += 1
-			makeRelicRow(relicName, found, order)
+			makeRelicRow(relic.name, found, order)
 		end
 	end
 

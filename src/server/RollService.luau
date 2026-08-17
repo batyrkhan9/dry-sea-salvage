@@ -44,7 +44,7 @@ end
 
 local function rollRelic(rarityName: string): string
 	local pool = Config.Relics[rarityName]
-	return pool[math.random(1, #pool)]
+	return pool[math.random(1, #pool)].name
 end
 
 -- Attempts a roll for the player. Returns the result, or nil if they're

@@ -41,13 +41,40 @@ Config.Rarities = {
 	{ name = "What the Sea Left", weight = 1, color = Color3.fromRGB(255, 215, 120) },
 }
 
-Config.Relics = {
-	["Rust"] = { "Bent Anchor", "Torn Net", "Rusty Chain" },
-	["Salt"] = { "Ship Bell", "Old Compass", "Bottle Message" },
-	["Tide"] = { "Figurehead", "Captain's Log", "Brass Telescope" },
-	["Storm"] = { "Lightning Mast", "Black Flag" },
-	["Ghost Ship"] = { "Phantom Wheel" },
-	["What the Sea Left"] = { "The Key" },
+-- Each relic is a table (not a bare string) on purpose: v2 base-defense
+-- will add fields like `unit = { damage, range, placementType }` and
+-- `power` per relic, with no save migration needed — saves only ever
+-- store relic NAMES, never these tables.
+export type RelicDef = {
+	name: string,
 }
+
+Config.Relics = {
+	["Rust"] = {
+		{ name = "Bent Anchor" },
+		{ name = "Torn Net" },
+		{ name = "Rusty Chain" },
+	},
+	["Salt"] = {
+		{ name = "Ship Bell" },
+		{ name = "Old Compass" },
+		{ name = "Bottle Message" },
+	},
+	["Tide"] = {
+		{ name = "Figurehead" },
+		{ name = "Captain's Log" },
+		{ name = "Brass Telescope" },
+	},
+	["Storm"] = {
+		{ name = "Lightning Mast" },
+		{ name = "Black Flag" },
+	},
+	["Ghost Ship"] = {
+		{ name = "Phantom Wheel" },
+	},
+	["What the Sea Left"] = {
+		{ name = "The Key" },
+	},
+} :: { [string]: { RelicDef } }
 
 return Config

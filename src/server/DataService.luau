@@ -26,7 +26,13 @@ local MAX_RETRIES = 3
 
 local store = DataStoreService:GetDataStore(STORE_NAME)
 
+-- Bump SCHEMA_VERSION when the data shape changes in a way reconcile()'s
+-- fill-in-missing-fields step can't handle on its own; the loaded value
+-- tells future migration code exactly which shape it's holding.
+local SCHEMA_VERSION = 1
+
 export type PlayerData = {
+	schemaVersion: number,
 	inventory: { [string]: number }, -- relic name -> how many owned right now
 	discovered: { [string]: boolean }, -- relic name -> ever found (survives merging away)
 }
@@ -34,6 +40,7 @@ export type PlayerData = {
 local function defaultData(): PlayerData
 	-- Built fresh each call so two players never share the same table.
 	return {
+		schemaVersion = SCHEMA_VERSION,
 		inventory = {},
 		discovered = {},
 	}
@@ -44,6 +51,16 @@ end
 -- data saved before `discovered` existed gets an empty set added here
 -- instead of crashing code that expects it.
 local function reconcile(stored: any): PlayerData
+	-- Saves written before schemaVersion existed are by definition the
+	-- first schema. Stamp that BEFORE the generic fill-in below, so an old
+	-- save can never be labeled with a newer version than its real shape
+	-- (which would make future migration code skip it).
+	if stored.schemaVersion == nil then
+		stored.schemaVersion = 1
+	end
+	-- When SCHEMA_VERSION grows past 1, step-by-step migrations run here:
+	-- if stored.schemaVersion == 1 then ... ; stored.schemaVersion = 2 ; end
+
 	local default = defaultData()
 	for key, defaultValue in default :: any do
 		if stored[key] == nil then

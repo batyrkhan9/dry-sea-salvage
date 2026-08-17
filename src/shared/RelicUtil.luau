@@ -16,8 +16,8 @@ end
 
 local rarityNameByRelic: { [string]: string } = {}
 for rarityName, relics in Config.Relics do
-	for _, relicName in relics do
-		rarityNameByRelic[relicName] = rarityName
+	for _, relic in relics do
+		rarityNameByRelic[relic.name] = rarityName
 	end
 end
 

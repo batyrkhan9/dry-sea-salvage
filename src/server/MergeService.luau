@@ -55,7 +55,7 @@ function MergeService.tryMerge(player: Player, relicName: unknown): (MergeResult
 	end
 
 	local pool = Config.Relics[nextRarity]
-	local newRelic = pool[math.random(1, #pool)]
+	local newRelic = pool[math.random(1, #pool)].name
 	InventoryService.addRelic(player, newRelic)
 
 	return {
