@@ -1,0 +1,4 @@
+# Selene lint config — https://github.com/Kampfkarren/selene
+# "roblox" gives Selene the Roblox API surface (game, Instance, task, etc.);
+# it generates the standard library definition automatically.
+std = "roblox"

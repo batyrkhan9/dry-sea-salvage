@@ -1,0 +1,34 @@
+# CI: formatting + lint on every push and PR.
+# StyLua enforces formatting (fails on any diff); Selene catches Luau
+# mistakes (undefined globals, shadowing, unused code) with Roblox API
+# awareness. Both are pinned to specific versions so CI results are
+# reproducible — bump them deliberately, not implicitly.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    name: StyLua + Selene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: StyLua (format check)
+        uses: JohnnyMorganz/stylua-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: v2.5.2
+          args: --check src
+
+      - name: Selene (lint)
+        run: |
+          curl -fsSL -o selene.zip \
+            "https://github.com/Kampfkarren/selene/releases/download/${SELENE_VERSION}/selene-${SELENE_VERSION}-linux.zip"
+          unzip -o selene.zip
+          chmod +x selene
+          ./selene src
+        env:
+          SELENE_VERSION: 0.31.0
