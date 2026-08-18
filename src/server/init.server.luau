@@ -10,6 +10,7 @@ local RollService = require(script.RollService)
 local InventoryService = require(script.InventoryService)
 local MergeService = require(script.MergeService)
 require(script.DataService) -- starts load/save lifecycle on require
+require(script.MapBuilder).build() -- scatter the wrecks before players spawn
 
 -- Client asks for a roll; server answers on the same event.
 local rollEvent = Instance.new("RemoteEvent")

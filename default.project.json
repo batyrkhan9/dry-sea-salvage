@@ -31,10 +31,11 @@
         "$className": "Part",
         "$properties": {
           "Anchored": true,
+          "Material": "Sand",
           "Color": [
-            0.38823,
-            0.37254,
-            0.38823
+            0.7607,
+            0.6509,
+            0.4392
           ],
           "Locked": true,
           "Position": [
@@ -43,9 +44,9 @@
             0
           ],
           "Size": [
-            512,
+            2048,
             20,
-            512
+            2048
           ]
         }
       }
@@ -53,14 +54,45 @@
     "Lighting": {
       "$properties": {
         "Ambient": [
-          0,
-          0,
-          0
+          0.4196,
+          0.3568,
+          0.2784
         ],
-        "Brightness": 2,
+        "OutdoorAmbient": [
+          0.5647,
+          0.4784,
+          0.3568
+        ],
+        "ColorShift_Top": [
+          1,
+          0.8,
+          0.5647
+        ],
+        "Brightness": 2.6,
+        "ClockTime": 16.4,
+        "GeographicLatitude": 25,
         "GlobalShadows": true,
         "Outlines": false,
-        "Technology": "Voxel"
+        "Technology": "ShadowMap"
+      },
+      "Atmosphere": {
+        "$className": "Atmosphere",
+        "$properties": {
+          "Density": 0.35,
+          "Offset": 0.25,
+          "Color": [
+            0.7803,
+            0.6666,
+            0.4196
+          ],
+          "Decay": [
+            0.4156,
+            0.3176,
+            0.2039
+          ],
+          "Glare": 0.3,
+          "Haze": 1.8
+        }
       }
     },
     "SoundService": {
