@@ -8,13 +8,27 @@
 
 	Everything else (InventoryService etc.) just asks for the cached table
 	via DataService.get() and mutates it — saving is this module's problem.
+
+	Session locking: the same account can be in two servers at once (rejoin
+	race, teleports, a stuck server). Without a lock, whichever server saves
+	last silently overwrites the other's progress. So every record carries a
+	_lock (server id + timestamp): a server only loads a record it can lock,
+	refreshes the lock on autosave, and releases it on the final save. A
+	second server seeing a fresh foreign lock gets a read-only session
+	instead of the power to destroy data. Stale locks (crashed server that
+	never released) expire after LOCK_TIMEOUT.
 ]]
 
 local DataStoreService = game:GetService("DataStoreService")
+local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local PlayerDataSchema = require(script.Parent.PlayerDataSchema)
+
+local defaultData = PlayerDataSchema.defaultData
+local reconcile = PlayerDataSchema.reconcile
 
 local DataService = {}
 
@@ -24,57 +38,29 @@ local STORE_NAME = "PlayerData_v1"
 local KEY_PREFIX = "player_"
 local MAX_RETRIES = 3
 
+-- game.JobId uniquely identifies a live server but is "" in Studio, so
+-- fall back to a GUID there (each playtest counts as its own "server").
+local SERVER_ID = if game.JobId ~= "" then game.JobId else HttpService:GenerateGUID(false)
+
+-- A lock is stale once its owner has missed two autosaves (plus slack for
+-- retries) — the owner is either dead or about to release anyway.
+local LOCK_TIMEOUT = Config.AutosaveInterval * 2 + 30
+
+-- How many times to re-attempt taking a lock held by another server.
+-- Covers the common race: rejoining while the old server is still
+-- finishing the leave-save that releases the lock.
+local LOCK_ATTEMPTS = 3
+local LOCK_RETRY_DELAY = 3
+
 local store = DataStoreService:GetDataStore(STORE_NAME)
 
--- Bump SCHEMA_VERSION when the data shape changes in a way reconcile()'s
--- fill-in-missing-fields step can't handle on its own; the loaded value
--- tells future migration code exactly which shape it's holding.
-local SCHEMA_VERSION = 1
+type Lock = { id: string, at: number }
 
-export type PlayerData = {
-	schemaVersion: number,
-	inventory: { [string]: number }, -- relic name -> how many owned right now
-	discovered: { [string]: boolean }, -- relic name -> ever found (survives merging away)
-}
-
-local function defaultData(): PlayerData
-	-- Built fresh each call so two players never share the same table.
-	return {
-		schemaVersion = SCHEMA_VERSION,
-		inventory = {},
-		discovered = {},
-	}
+local function isHeldByOther(lock: Lock?): boolean
+	return lock ~= nil and lock.id ~= SERVER_ID and os.time() - lock.at < LOCK_TIMEOUT
 end
 
--- Fills in any top-level fields that exist in the default shape but are
--- missing from stored data. This is how old saves survive new features:
--- data saved before `discovered` existed gets an empty set added here
--- instead of crashing code that expects it.
-local function reconcile(stored: any): PlayerData
-	-- Saves written before schemaVersion existed are by definition the
-	-- first schema. Stamp that BEFORE the generic fill-in below, so an old
-	-- save can never be labeled with a newer version than its real shape
-	-- (which would make future migration code skip it).
-	if stored.schemaVersion == nil then
-		stored.schemaVersion = 1
-	end
-	-- When SCHEMA_VERSION grows past 1, step-by-step migrations run here:
-	-- if stored.schemaVersion == 1 then ... ; stored.schemaVersion = 2 ; end
-
-	local default = defaultData()
-	for key, defaultValue in default :: any do
-		if stored[key] == nil then
-			stored[key] = defaultValue
-		end
-	end
-	-- Owning a relic implies having discovered it. This also migrates
-	-- saves that predate `discovered` — their index starts from what
-	-- they currently hold instead of empty.
-	for relicName in stored.inventory do
-		stored.discovered[relicName] = true
-	end
-	return stored
-end
+export type PlayerData = PlayerDataSchema.PlayerData
 
 type Session = {
 	data: PlayerData,
@@ -110,29 +96,78 @@ local function keyFor(userId: number): string
 end
 
 local function load(player: Player)
-	local ok, stored = withRetries("load " .. player.Name, function()
-		return store:GetAsync(keyFor(player.UserId))
-	end)
+	local ok, stored
+	local lockedOut = false
 
-	local session: Session = {
-		data = if stored ~= nil then reconcile(stored) else defaultData(),
-		loadFailed = not ok,
-	}
-	sessions[player.UserId] = session
-
-	if not ok then
-		warn(("DataService: giving %s temporary default data; saving is disabled for this session"):format(player.Name))
+	-- Outer loop: re-attempt when the record is LOCKED (not an error —
+	-- usually the player's previous server finishing its leave-save).
+	-- withRetries inside handles actual API failures.
+	for attempt = 1, LOCK_ATTEMPTS do
+		lockedOut = false
+		ok, stored = withRetries("load " .. player.Name, function()
+			return store:UpdateAsync(keyFor(player.UserId), function(record)
+				if record ~= nil and isHeldByOther(record._lock) then
+					lockedOut = true
+					return nil -- returning nil aborts the write
+				end
+				record = record or {} -- brand-new player
+				record._lock = { id = SERVER_ID, at = os.time() } :: Lock
+				return record
+			end)
+		end)
+		if not lockedOut then
+			break
+		end
+		if attempt < LOCK_ATTEMPTS then
+			task.wait(LOCK_RETRY_DELAY)
+		end
 	end
+
+	local session: Session
+	if ok and not lockedOut then
+		-- The lock is bookkeeping, not gameplay data — strip it so the
+		-- rest of the game never sees it. It gets re-attached on save.
+		stored._lock = nil
+		session = { data = reconcile(stored), loadFailed = false }
+	else
+		session = { data = defaultData(), loadFailed = true }
+		if lockedOut then
+			warn(("DataService: %s's data is locked by another server; read-only session"):format(player.Name))
+		else
+			warn(
+				("DataService: giving %s temporary default data; saving is disabled for this session"):format(
+					player.Name
+				)
+			)
+		end
+	end
+	sessions[player.UserId] = session
 end
 
-local function save(userId: number, playerName: string)
+-- isFinal: the player is gone (leave/shutdown), so release the lock;
+-- otherwise (autosave) refresh its timestamp to show we're alive.
+local function save(userId: number, playerName: string, isFinal: boolean)
 	local session = sessions[userId]
 	if session == nil or session.loadFailed then
 		return
 	end
 	withRetries("save " .. playerName, function()
-		store:SetAsync(keyFor(userId), session.data)
+		return store:UpdateAsync(keyFor(userId), function(record)
+			-- Paranoia guard: if another server somehow holds a fresh
+			-- lock (ours expired as stale), we no longer own this data —
+			-- abort rather than overwrite their live session.
+			if record ~= nil and isHeldByOther(record._lock) then
+				warn(("DataService: lost lock on %s's data; skipping save"):format(playerName))
+				return nil
+			end
+			local out: any = session.data
+			out._lock = if isFinal then nil else { id = SERVER_ID, at = os.time() }
+			return out
+		end)
 	end)
+	-- Keep the cached copy free of lock bookkeeping between saves.
+	local cached: any = session.data
+	cached._lock = nil
 end
 
 -- Returns the player's live data table, or nil if it isn't loaded
@@ -149,7 +184,7 @@ for _, player in Players:GetPlayers() do
 end
 
 Players.PlayerRemoving:Connect(function(player)
-	save(player.UserId, player.Name)
+	save(player.UserId, player.Name, true) -- final: releases the lock
 	sessions[player.UserId] = nil
 end)
 
@@ -158,7 +193,7 @@ task.spawn(function()
 	while true do
 		task.wait(Config.AutosaveInterval)
 		for _, player in Players:GetPlayers() do
-			save(player.UserId, player.Name)
+			save(player.UserId, player.Name, false) -- refreshes the lock
 		end
 	end
 end)
@@ -168,7 +203,7 @@ end)
 -- alive (up to 30s) until this returns.
 game:BindToClose(function()
 	for _, player in Players:GetPlayers() do
-		save(player.UserId, player.Name)
+		save(player.UserId, player.Name, true)
 	end
 end)
 
