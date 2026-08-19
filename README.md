@@ -7,7 +7,7 @@ the **Aral Sea**. Old ships lie half-buried in the sand; you play a salvager
 digging up relics of the vanished sea, collecting, merging, and completing an
 index of everything the water left behind.
 
-**▶ Play:** _link coming soon — publishing in progress_
+**▶ Play:** [Dry Sea Salvage on Roblox](https://www.roblox.com/games/107203524958682/Dry-Sea-Salvage)
 
 ## How it plays
 
