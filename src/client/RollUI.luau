@@ -1,5 +1,5 @@
 --[[
-	RollUI — everything the player sees for rolling:
+	RollUI - everything the player sees for rolling:
 	  - the SALVAGE button (bottom center) with a cooldown countdown
 	  - the result popup (center) tinted with the rarity's color
 
@@ -88,7 +88,7 @@ rarityLabel.TextScaled = true
 rarityLabel.Parent = popup
 
 -- Full-screen color flash used for high-tier pulls. Sits behind the popup
--- and ignores input (it's a Frame, not a button — frames don't sink clicks).
+-- and ignores input (it's a Frame, not a button - frames don't sink clicks).
 local flash = Instance.new("Frame")
 flash.Name = "RarityFlash"
 flash.Size = UDim2.fromScale(1, 1)
@@ -102,7 +102,7 @@ flash.Parent = screenGui
 local onCooldown = false
 
 -- Grays the button out and counts down its label, then restores it.
--- Client-side mirror of the server cooldown: purely cosmetic — the server
+-- Client-side mirror of the server cooldown: purely cosmetic - the server
 -- still rejects early requests even if this gets bypassed.
 local function runCooldownDisplay()
 	onCooldown = true
@@ -197,7 +197,7 @@ function RollUI.showResult(relic: string, rarityName: string)
 		end)
 	end
 
-	-- Hide after a moment — unless another roll replaced this popup already.
+	-- Hide after a moment - unless another roll replaced this popup already.
 	task.delay(2.5, function()
 		if currentShowId ~= showId then
 			return

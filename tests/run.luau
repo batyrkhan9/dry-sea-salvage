@@ -6,7 +6,7 @@
 	Color3 datatype, so a tiny loader below runs them with shims:
 	`script` becomes a table of file paths, `require` loads those paths,
 	and Color3 becomes a plain-table stand-in. Only pure logic modules
-	are loadable this way — anything touching game services is exercised
+	are loadable this way - anything touching game services is exercised
 	in Studio instead.
 ]]
 

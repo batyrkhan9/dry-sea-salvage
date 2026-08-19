@@ -1,5 +1,5 @@
 --[[
-	InventoryService — owns what "having relics" means.
+	InventoryService - owns what "having relics" means.
 	It never touches DataStores directly; it just mutates the cached data
 	table that DataService loads and saves.
 ]]
@@ -9,7 +9,7 @@ local DataService = require(script.Parent.DataService)
 local InventoryService = {}
 
 -- Adds one copy of a relic. Returns the new count, or nil if the player's
--- data isn't loaded yet (roll results before load simply aren't recorded —
+-- data isn't loaded yet (roll results before load simply aren't recorded -
 -- the roll cooldown makes this window tiny in practice).
 function InventoryService.addRelic(player: Player, relicName: string): number?
 	local data = DataService.get(player)
@@ -19,7 +19,7 @@ function InventoryService.addRelic(player: Player, relicName: string): number?
 	end
 	local newCount = (data.inventory[relicName] or 0) + 1
 	data.inventory[relicName] = newCount
-	-- Permanent record for the collection index — never un-set, even if
+	-- Permanent record for the collection index - never un-set, even if
 	-- every copy is later merged away.
 	data.discovered[relicName] = true
 	return newCount
@@ -32,7 +32,7 @@ function InventoryService.getDiscovered(player: Player): { [string]: boolean }?
 end
 
 -- Removes `amount` copies of a relic. Fails (returns false) if the player
--- doesn't own that many — it never lets a count go negative.
+-- doesn't own that many - it never lets a count go negative.
 function InventoryService.removeRelic(player: Player, relicName: string, amount: number): boolean
 	local data = DataService.get(player)
 	if data == nil then

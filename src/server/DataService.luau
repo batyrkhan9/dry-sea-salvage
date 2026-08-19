@@ -1,5 +1,5 @@
 --[[
-	DataService — the ONLY module that talks to DataStoreService.
+	DataService - the ONLY module that talks to DataStoreService.
 
 	Lifecycle it manages:
 	  - load a player's data when they join (with retries)
@@ -7,7 +7,7 @@
 	  - save on leave, on server shutdown, and on an autosave timer
 
 	Everything else (InventoryService etc.) just asks for the cached table
-	via DataService.get() and mutates it — saving is this module's problem.
+	via DataService.get() and mutates it - saving is this module's problem.
 
 	Session locking: the same account can be in two servers at once (rejoin
 	race, teleports, a stuck server). Without a lock, whichever server saves
@@ -32,7 +32,7 @@ local reconcile = PlayerDataSchema.reconcile
 
 local DataService = {}
 
--- Bump the "_v1" if the data format ever changes incompatibly — old data
+-- Bump the "_v1" if the data format ever changes incompatibly - old data
 -- stays untouched under the old name instead of being misread.
 local STORE_NAME = "PlayerData_v1"
 local KEY_PREFIX = "player_"
@@ -43,7 +43,7 @@ local MAX_RETRIES = 3
 local SERVER_ID = if game.JobId ~= "" then game.JobId else HttpService:GenerateGUID(false)
 
 -- A lock is stale once its owner has missed two autosaves (plus slack for
--- retries) — the owner is either dead or about to release anyway.
+-- retries) - the owner is either dead or about to release anyway.
 local LOCK_TIMEOUT = Config.AutosaveInterval * 2 + 30
 
 -- How many times to re-attempt taking a lock held by another server.
@@ -65,7 +65,7 @@ export type PlayerData = PlayerDataSchema.PlayerData
 type Session = {
 	data: PlayerData,
 	-- If the load failed, we still give the player default data so they can
-	-- play, but we must NEVER save it — saving would overwrite their real
+	-- play, but we must NEVER save it - saving would overwrite their real
 	-- data with an empty inventory. This flag blocks all saves for the session.
 	loadFailed: boolean,
 }
@@ -99,7 +99,7 @@ local function load(player: Player)
 	local ok, stored
 	local lockedOut = false
 
-	-- Outer loop: re-attempt when the record is LOCKED (not an error —
+	-- Outer loop: re-attempt when the record is LOCKED (not an error -
 	-- usually the player's previous server finishing its leave-save).
 	-- withRetries inside handles actual API failures.
 	for attempt = 1, LOCK_ATTEMPTS do
@@ -125,7 +125,7 @@ local function load(player: Player)
 
 	local session: Session
 	if ok and not lockedOut then
-		-- The lock is bookkeeping, not gameplay data — strip it so the
+		-- The lock is bookkeeping, not gameplay data - strip it so the
 		-- rest of the game never sees it. It gets re-attached on save.
 		stored._lock = nil
 		session = { data = reconcile(stored), loadFailed = false }
@@ -154,7 +154,7 @@ local function save(userId: number, playerName: string, isFinal: boolean)
 	withRetries("save " .. playerName, function()
 		return store:UpdateAsync(keyFor(userId), function(record)
 			-- Paranoia guard: if another server somehow holds a fresh
-			-- lock (ours expired as stale), we no longer own this data —
+			-- lock (ours expired as stale), we no longer own this data -
 			-- abort rather than overwrite their live session.
 			if record ~= nil and isHeldByOther(record._lock) then
 				warn(("DataService: lost lock on %s's data; skipping save"):format(playerName))

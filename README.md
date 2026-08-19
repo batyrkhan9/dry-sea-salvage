@@ -2,49 +2,49 @@
 
 [![CI](https://github.com/batyrkhan9/dry-sea-salvage/actions/workflows/ci.yml/badge.svg)](https://github.com/batyrkhan9/dry-sea-salvage/actions/workflows/ci.yml)
 
-A Roblox game set on an endless dried-up seabed. Old ships lie half-buried in
-the sand; you play a salvager digging up relics of the vanished sea. The
-long-term vision is a large strategic open world; what's live today is **v1:
-the salvage loop** — the acquisition, collection, and persistence layer that
-everything else will build on.
+A Roblox game based on a short film I produced: an endless dried-up seabed
+where old ships lie half-buried in the sand. You play a salvager digging up
+relics of the vanished sea. The long-term vision is a large strategic open
+world; what's live today is **v1: the salvage loop**, the acquisition,
+collection, and persistence layer that everything else will build on.
 
 **▶ Play:** [Dry Sea Salvage on Roblox](https://www.roblox.com/games/107203524958682/Dry-Sea-Salvage)
 
 ## The salvage loop (v1)
 
-- **Salvage** — one button. The server rolls a relic across six rarity tiers,
+- **Salvage** - one button. The server rolls a relic across six rarity tiers,
   from common *Rust* finds to the once-in-a-thousand *What the Sea Left*.
-- **Collect** — everything you find is saved permanently to your inventory.
-- **Merge** — three copies of the same relic forge one random relic of the
+- **Collect** - everything you find is saved permanently to your inventory.
+- **Merge** - three copies of the same relic forge one random relic of the
   next tier up.
-- **Index** — a collection book tracks what you've found and what's still out
+- **Index** - a collection book tracks what you've found and what's still out
   there; the whole server gets a banner when someone pulls a top-tier relic.
 
 ## Architecture
 
 Written in **Luau**, developed in VS Code and synced to Roblox Studio with
-**Rojo** — all game logic lives in this repo, not in the place file.
+**Rojo** - all game logic lives in this repo, not in the place file.
 
 ```
 src/
 ├── server/               (ServerScriptService)
-│   ├── init.server.luau   — entry point: creates remotes, wires services
-│   ├── RollService.luau   — weighted RNG + per-player roll cooldown
-│   ├── InventoryService.luau — owned relics + discovery tracking
-│   ├── MergeService.luau  — merge validation and execution
-│   ├── DataService.luau   — the ONLY module touching DataStores
-│   ├── PlayerDataSchema.luau — save shape + migrations (pure, unit-tested)
-│   └── MapBuilder.luau    — seeded procedural wreck scatter
+│   ├── init.server.luau   - entry point: creates remotes, wires services
+│   ├── RollService.luau   - weighted RNG + per-player roll cooldown
+│   ├── InventoryService.luau - owned relics + discovery tracking
+│   ├── MergeService.luau  - merge validation and execution
+│   ├── DataService.luau   - the ONLY module touching DataStores
+│   ├── PlayerDataSchema.luau - save shape + migrations (pure, unit-tested)
+│   └── MapBuilder.luau    - seeded procedural wreck scatter
 ├── client/               (StarterPlayerScripts)
-│   ├── init.client.luau   — entry point: wires remotes to UI modules
-│   ├── RollUI.luau        — salvage button, cooldown, result popup + effects
-│   ├── InventoryUI.luau   — relics panel with merge buttons
-│   ├── CollectionUI.luau  — the index: found vs. missing, per tier
-│   ├── AnnouncementUI.luau — server-wide rare-pull banner (queued)
-│   └── Sound.luau         — config-driven sound playback
+│   ├── init.client.luau   - entry point: wires remotes to UI modules
+│   ├── RollUI.luau        - salvage button, cooldown, result popup + effects
+│   ├── InventoryUI.luau   - relics panel with merge buttons
+│   ├── CollectionUI.luau  - the index: found vs. missing, per tier
+│   ├── AnnouncementUI.luau - server-wide rare-pull banner (queued)
+│   └── Sound.luau         - config-driven sound playback
 └── shared/               (ReplicatedStorage)
-    ├── Config.luau        — ALL tuning: rarities, relics, weights, costs
-    └── RelicUtil.luau     — pure lookups shared by server and client
+    ├── Config.luau        - ALL tuning: rarities, relics, weights, costs
+    └── RelicUtil.luau     - pure lookups shared by server and client
 ```
 
 **Server-authoritative by design.** Every roll, inventory change, and merge
@@ -70,20 +70,20 @@ gives the player a read-only session instead of the power to destroy data.
 
 **Testing:** pure logic (roll-odds mapping, relic lookups, merge eligibility,
 save-schema migrations) is factored into Roblox-free modules and unit-tested
-with [Lune](https://github.com/lune-org/lune) on every push — `lune run
+with [Lune](https://github.com/lune-org/lune) on every push - `lune run
 tests/run.luau` locally.
 
-**Data-driven content:** relics and rarities are pure data in `Config.luau` —
+**Data-driven content:** relics and rarities are pure data in `Config.luau` -
 adding a relic or retuning the odds touches no logic. Relic definitions are
 structured to carry future gameplay fields (unit stats, power values)
 without save migration.
 
 ## Tech stack
 
-- **Luau** (typed) — plain modules, no frameworks
-- **Rojo** — filesystem ↔ Studio sync
-- **Roblox DataStore** — persistence
-- **GitHub Actions** — StyLua format check, Selene lint, and Lune unit tests
+- **Luau** (typed) - plain modules, no frameworks
+- **Rojo** - filesystem ↔ Studio sync
+- **Roblox DataStore** - persistence
+- **GitHub Actions** - StyLua format check, Selene lint, and Lune unit tests
   on every push
 
 ## Design principles
@@ -92,8 +92,8 @@ Built for a mostly-young audience:
 
 1. **No paid luck, ever.** Rolls come from playing. If monetization is ever
    added, it's cosmetics only.
-2. **Equal odds for everyone** — identical RNG regardless of money or skill.
-3. **Reward thinking and planning** over pure grinding — the game should
+2. **Equal odds for everyone** - identical RNG regardless of money or skill.
+3. **Reward thinking and planning** over pure grinding - the game should
    grow toward strategy, not toward faster clicking.
 4. **A pity system** (guaranteed rare after enough rolls) is planned so bad
    luck always has a floor.
@@ -103,13 +103,13 @@ Built for a mostly-young audience:
 v1 is the foundation layer of a much larger game, built mechanism by
 mechanism:
 
-- ✅ **Salvage loop** — weighted rolls, persistent inventory, merging,
+- ✅ **Salvage loop** - weighted rolls, persistent inventory, merging,
   collection index, rare-pull announcements
-- 🔨 **Strategic camp gameplay** — your salvage camp on the seabed; relics
+- 🔨 **Strategic camp gameplay** - your salvage camp on the seabed; relics
   become pieces you place and command, with thinking beating twitch skill
-- 🔨 **Building & economy** — spend salvage to build and upgrade camp
+- 🔨 **Building & economy** - spend salvage to build and upgrade camp
   structures
-- 🔨 **Open-world expansion** — new zones across the seabed, scavenger NPCs,
+- 🔨 **Open-world expansion** - new zones across the seabed, scavenger NPCs,
   a camp that grows into a settlement
 
 ## Running locally

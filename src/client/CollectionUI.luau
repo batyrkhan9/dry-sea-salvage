@@ -1,12 +1,12 @@
 --[[
-	CollectionUI — the index/collection book:
+	CollectionUI - the index/collection book:
 	  - INDEX toggle button (bottom left, next to RELICS)
 	  - panel listing EVERY relic in the game grouped by tier, in config
 	    order; found relics show their name, missing ones show "???"
 	  - progress counter in the title ("7 / 14")
 
 	Unlike the relics panel (which lists what you hold), this lists the
-	whole game — so its rows come from Config, not from the inventory.
+	whole game - so its rows come from Config, not from the inventory.
 	Callback from the entry script:
 	  CollectionUI.onCollectionRequested(fetch) -> fetch(): {[string]: boolean}
 ]]

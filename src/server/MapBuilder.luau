@@ -1,10 +1,10 @@
 --[[
-	MapBuilder — scatters part-built shipwrecks and debris across the
+	MapBuilder - scatters part-built shipwrecks and debris across the
 	seabed at server start, so the world isn't an empty plane.
 
 	Placeholder art, deliberately: real ship models can replace these in
 	Studio later. Everything is seeded RNG (Random.new(SEED)), so every
-	server builds the IDENTICAL layout — it reads as a designed map, and
+	server builds the IDENTICAL layout - it reads as a designed map, and
 	a good wreck near spawn stays there for every player, every visit.
 
 	These are visual constants, not gameplay tuning, so they live here
@@ -43,7 +43,7 @@ local function makePart(props: { [string]: any }, parent: Instance?): Part
 end
 
 -- One wreck: a hull box listing to one side, a bow wedge, a couple of
--- masts, and rib planks — sunk partway into the sand.
+-- masts, and rib planks - sunk partway into the sand.
 local function buildWreck(position: Vector3)
 	local model = Instance.new("Model")
 	model.Name = "Wreck"

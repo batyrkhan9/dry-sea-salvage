@@ -1,5 +1,5 @@
 --[[
-	PlayerDataSchema — the SHAPE of a player's save and how old saves get
+	PlayerDataSchema - the SHAPE of a player's save and how old saves get
 	upgraded to it. Pure data logic, no Roblox APIs, so it's unit-testable
 	outside Studio. DataService owns WHEN to load/save; this owns WHAT.
 ]]
@@ -48,7 +48,7 @@ function PlayerDataSchema.reconcile(stored: any): PlayerData
 		end
 	end
 	-- Owning a relic implies having discovered it. This also migrates
-	-- saves that predate `discovered` — their index starts from what
+	-- saves that predate `discovered` - their index starts from what
 	-- they currently hold instead of empty.
 	for relicName in stored.inventory do
 		stored.discovered[relicName] = true

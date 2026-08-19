@@ -1,5 +1,5 @@
 --[[
-	InventoryUI — the relics panel:
+	InventoryUI - the relics panel:
 	  - RELICS toggle button (bottom left)
 	  - scrolling list of owned relics, sorted by tier then name
 	  - a MERGE button on rows with enough copies to merge
@@ -195,7 +195,7 @@ function InventoryUI.refresh()
 	end
 end
 
--- Refresh only when the panel is actually on screen — no point fetching
+-- Refresh only when the panel is actually on screen - no point fetching
 -- the inventory for a hidden panel.
 function InventoryUI.refreshIfOpen()
 	if panel.Visible then

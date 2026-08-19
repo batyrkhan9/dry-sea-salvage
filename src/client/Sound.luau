@@ -1,5 +1,5 @@
 --[[
-	Sound — one tiny helper so UI modules never build Sound instances
+	Sound - one tiny helper so UI modules never build Sound instances
 	themselves. Ids come from Config.Sounds; an id of 0 means "no sound
 	chosen yet" and is silently skipped, so the game works fine before
 	any audio has been picked.

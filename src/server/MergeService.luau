@@ -1,5 +1,5 @@
 --[[
-	MergeService — server-side merge rules.
+	MergeService - server-side merge rules.
 	Rule: Config.MergeCost copies of the SAME relic -> one random relic
 	from the next rarity tier up. Top tier can't merge.
 
@@ -47,7 +47,7 @@ function MergeService.tryMerge(player: Player, relicName: unknown): (MergeResult
 		return nil, "not enough copies"
 	end
 
-	-- All checks passed — now mutate. Remove first, then add, so a bug in
+	-- All checks passed - now mutate. Remove first, then add, so a bug in
 	-- the add path can never leave the player with cost NOT paid.
 	local removed = InventoryService.removeRelic(player, relicName, Config.MergeCost)
 	if not removed then

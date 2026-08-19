@@ -1,5 +1,5 @@
 --[[
-	RelicUtil — pure lookup helpers over Config, no state, no side effects.
+	RelicUtil - pure lookup helpers over Config, no state, no side effects.
 	Shared because both the server (validating merges) and the client
 	(deciding which MERGE buttons to show) need the same answers.
 ]]
@@ -57,8 +57,8 @@ function RelicUtil.totalWeight(): number
 	return totalWeight
 end
 
--- Maps a lottery ticket (1..totalWeight) to its rarity. Pure — the caller
--- brings the randomness — which is what makes the odds unit-testable.
+-- Maps a lottery ticket (1..totalWeight) to its rarity. Pure - the caller
+-- brings the randomness - which is what makes the odds unit-testable.
 function RelicUtil.rarityForTicket(ticket: number)
 	assert(ticket >= 1 and ticket <= totalWeight, "ticket out of range")
 	local passed = 0
@@ -69,7 +69,7 @@ function RelicUtil.rarityForTicket(ticket: number)
 		end
 	end
 	-- Unreachable: the assert above guarantees a tier is hit.
-	error("rarityForTicket fell through — check Config.Rarities weights")
+	error("rarityForTicket fell through - check Config.Rarities weights")
 end
 
 -- The display color of a rarity (white fallback for unknown names).

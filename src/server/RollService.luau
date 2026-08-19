@@ -1,5 +1,5 @@
 --[[
-	RollService — all salvage-roll logic lives here.
+	RollService - all salvage-roll logic lives here.
 	The entry script (init.server) only wires remotes to this module,
 	so the "how rolling works" and the "how the network works" stay separate.
 

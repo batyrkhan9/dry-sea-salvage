@@ -43,7 +43,7 @@ Config.Rarities = {
 
 -- Each relic is a table (not a bare string) on purpose: v2 base-defense
 -- will add fields like `unit = { damage, range, placementType }` and
--- `power` per relic, with no save migration needed — saves only ever
+-- `power` per relic, with no save migration needed - saves only ever
 -- store relic NAMES, never these tables.
 export type RelicDef = {
 	name: string,

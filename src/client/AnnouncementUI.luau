@@ -1,5 +1,5 @@
 --[[
-	AnnouncementUI — the server-wide rare-pull banner.
+	AnnouncementUI - the server-wide rare-pull banner.
 	Slides down from the top edge, holds, slides back up.
 
 	Announcements are queued: if two players hit rare pulls back to back,
@@ -79,7 +79,7 @@ local function showNext()
 	showing = true
 
 	local color = RelicUtil.rarityColor(nextUp.rarityName)
-	bannerText.Text = ("%s salvaged %s — %s!"):format(nextUp.playerName, nextUp.relic, nextUp.rarityName)
+	bannerText.Text = ("%s salvaged %s - %s!"):format(nextUp.playerName, nextUp.relic, nextUp.rarityName)
 	bannerText.TextColor3 = color
 	bannerStroke.Color = color
 
