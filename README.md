@@ -2,21 +2,22 @@
 
 [![CI](https://github.com/batyrkhan9/dry-sea-salvage/actions/workflows/ci.yml/badge.svg)](https://github.com/batyrkhan9/dry-sea-salvage/actions/workflows/ci.yml)
 
-A Roblox game set on an endless dried-up seabed, inspired by the real story of
-the **Aral Sea**. Old ships lie half-buried in the sand; you play a salvager
-digging up relics of the vanished sea, collecting, merging, and completing an
-index of everything the water left behind.
+A Roblox game set on an endless dried-up seabed. Old ships lie half-buried in
+the sand; you play a salvager digging up relics of the vanished sea. The
+long-term vision is a large strategic open world; what's live today is **v1:
+the salvage loop** — the acquisition, collection, and persistence layer that
+everything else will build on.
 
 **▶ Play:** [Dry Sea Salvage on Roblox](https://www.roblox.com/games/107203524958682/Dry-Sea-Salvage)
 
-## How it plays
+## The salvage loop (v1)
 
 - **Salvage** — one button. The server rolls a relic across six rarity tiers,
   from common *Rust* finds to the once-in-a-thousand *What the Sea Left*.
 - **Collect** — everything you find is saved permanently to your inventory.
 - **Merge** — three copies of the same relic forge one random relic of the
   next tier up.
-- **Flex** — a collection index tracks what you've found and what's still out
+- **Index** — a collection book tracks what you've found and what's still out
   there; the whole server gets a banner when someone pulls a top-tier relic.
 
 ## Architecture
@@ -74,7 +75,7 @@ tests/run.luau` locally.
 
 **Data-driven content:** relics and rarities are pure data in `Config.luau` —
 adding a relic or retuning the odds touches no logic. Relic definitions are
-structured to carry future gameplay fields (defense-unit stats, power values)
+structured to carry future gameplay fields (unit stats, power values)
 without save migration.
 
 ## Tech stack
@@ -92,22 +93,24 @@ Built for a mostly-young audience:
 1. **No paid luck, ever.** Rolls come from playing. If monetization is ever
    added, it's cosmetics only.
 2. **Equal odds for everyone** — identical RNG regardless of money or skill.
-3. **Reward thinking and planning** over pure grinding.
+3. **Reward thinking and planning** over pure grinding — the game should
+   grow toward strategy, not toward faster clicking.
 4. **A pity system** (guaranteed rare after enough rolls) is planned so bad
    luck always has a floor.
-5. **Teach something real** — the setting is the real Aral Sea, and the
-   collection index will eventually tell its true story.
 
 ## Roadmap
 
-- ✅ Salvage loop: weighted rolls, persistent inventory, merging, collection
-  index, rare-pull announcements
-- 🔨 **Base-defense** — your salvage camp on the seabed; relics become
-  placeable defense units against enemy waves; strategy over twitch skill
-- 🔨 **Base building & economy** — spend salvage to build and upgrade camp
+v1 is the foundation layer of a much larger game, built mechanism by
+mechanism:
+
+- ✅ **Salvage loop** — weighted rolls, persistent inventory, merging,
+  collection index, rare-pull announcements
+- 🔨 **Strategic camp gameplay** — your salvage camp on the seabed; relics
+  become pieces you place and command, with thinking beating twitch skill
+- 🔨 **Building & economy** — spend salvage to build and upgrade camp
   structures
-- 🔨 **Deeper merge paths** tied to unit upgrades
-- Later: scavenger NPCs (idle layer), camp citizens, world expansion
+- 🔨 **Open-world expansion** — new zones across the seabed, scavenger NPCs,
+  a camp that grows into a settlement
 
 ## Running locally
 

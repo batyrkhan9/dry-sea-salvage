@@ -13,7 +13,7 @@
 
 local MapBuilder = {}
 
-local SEED = 1960 -- the year the Aral Sea began to shrink
+local SEED = 1960 -- any fixed number works; changing it reshuffles the map
 local WRECK_COUNT = 14
 local DEBRIS_COUNT = 40
 local MIN_RADIUS = 70 -- keep a clear area around spawn
