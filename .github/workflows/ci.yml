@@ -21,7 +21,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           version: v2.5.2
-          args: --check src
+          args: --check src tests
 
       - name: Selene (lint)
         run: |
@@ -32,3 +32,13 @@ jobs:
           ./selene src
         env:
           SELENE_VERSION: 0.31.0
+
+      - name: Unit tests (Lune)
+        run: |
+          curl -fsSL -o lune.zip \
+            "https://github.com/lune-org/lune/releases/download/v${LUNE_VERSION}/lune-${LUNE_VERSION}-linux-x86_64.zip"
+          unzip -o lune.zip
+          chmod +x lune
+          ./lune run tests/run.luau
+        env:
+          LUNE_VERSION: 0.10.5

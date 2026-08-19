@@ -2,12 +2,16 @@
 	RollService — all salvage-roll logic lives here.
 	The entry script (init.server) only wires remotes to this module,
 	so the "how rolling works" and the "how the network works" stay separate.
+
+	The weighted-pick math itself lives in RelicUtil (pure, unit-tested);
+	this module owns the randomness and the per-player cooldown.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local RelicUtil = require(ReplicatedStorage.Shared.RelicUtil)
 
 local RollService = {}
 
@@ -17,30 +21,10 @@ export type RollResult = {
 	rarityName: string,
 }
 
--- Sum the weights once at startup instead of on every roll.
-local totalWeight = 0
-for _, rarity in Config.Rarities do
-	totalWeight += rarity.weight
-end
-
 -- os.clock() timestamp of each player's last roll, keyed by UserId.
 -- Keyed by UserId (a plain number) rather than the Player instance so a
 -- forgotten entry can never keep a Player object alive in memory.
 local lastRollAt: { [number]: number } = {}
-
-local function rollRarity()
-	local ticket = math.random(1, totalWeight)
-	local passed = 0
-	for _, rarity in Config.Rarities do
-		passed += rarity.weight
-		if ticket <= passed then
-			return rarity
-		end
-	end
-	-- Unreachable: ticket is always <= totalWeight. error() instead of
-	-- returning nil so a config mistake fails loudly, not silently.
-	error("rollRarity fell through — check Config.Rarities weights")
-end
 
 local function rollRelic(rarityName: string): string
 	local pool = Config.Relics[rarityName]
@@ -57,7 +41,8 @@ function RollService.tryRoll(player: Player): RollResult?
 	end
 	lastRollAt[player.UserId] = now
 
-	local rarity = rollRarity()
+	local ticket = math.random(1, RelicUtil.totalWeight())
+	local rarity = RelicUtil.rarityForTicket(ticket)
 	local relic = rollRelic(rarity.name)
 	return {
 		relic = relic,

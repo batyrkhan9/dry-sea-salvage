@@ -47,6 +47,31 @@ function RelicUtil.isMergeable(relicName: string): boolean
 	return rarityName ~= nil and RelicUtil.nextRarityName(rarityName) ~= nil
 end
 
+-- Sum of all rarity weights (the lottery's total ticket count).
+local totalWeight = 0
+for _, rarity in Config.Rarities do
+	totalWeight += rarity.weight
+end
+
+function RelicUtil.totalWeight(): number
+	return totalWeight
+end
+
+-- Maps a lottery ticket (1..totalWeight) to its rarity. Pure — the caller
+-- brings the randomness — which is what makes the odds unit-testable.
+function RelicUtil.rarityForTicket(ticket: number)
+	assert(ticket >= 1 and ticket <= totalWeight, "ticket out of range")
+	local passed = 0
+	for _, rarity in Config.Rarities do
+		passed += rarity.weight
+		if ticket <= passed then
+			return rarity
+		end
+	end
+	-- Unreachable: the assert above guarantees a tier is hit.
+	error("rarityForTicket fell through — check Config.Rarities weights")
+end
+
 -- The display color of a rarity (white fallback for unknown names).
 function RelicUtil.rarityColor(rarityName: string): Color3
 	local index = rarityIndexByName[rarityName]

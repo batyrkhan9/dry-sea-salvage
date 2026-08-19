@@ -4,7 +4,7 @@
 
 A Roblox game set on an endless dried-up seabed, inspired by the real story of
 the **Aral Sea**. Old ships lie half-buried in the sand; you play a salvager
-digging up relics of the vanished sea — collecting, merging, and completing an
+digging up relics of the vanished sea, collecting, merging, and completing an
 index of everything the water left behind.
 
 **▶ Play:** _link coming soon — publishing in progress_
@@ -31,7 +31,9 @@ src/
 │   ├── RollService.luau   — weighted RNG + per-player roll cooldown
 │   ├── InventoryService.luau — owned relics + discovery tracking
 │   ├── MergeService.luau  — merge validation and execution
-│   └── DataService.luau   — the ONLY module touching DataStores
+│   ├── DataService.luau   — the ONLY module touching DataStores
+│   ├── PlayerDataSchema.luau — save shape + migrations (pure, unit-tested)
+│   └── MapBuilder.luau    — seeded procedural wreck scatter
 ├── client/               (StarterPlayerScripts)
 │   ├── init.client.luau   — entry point: wires remotes to UI modules
 │   ├── RollUI.luau        — salvage button, cooldown, result popup + effects
@@ -58,6 +60,18 @@ disables saving rather than risk overwriting real data with defaults. Saves
 carry a `schemaVersion` field and pass through a reconcile step on load, so
 the format can evolve without breaking old saves.
 
+**Session locking:** the same account joining two servers at once is the
+classic Roblox data-loss bug (last write wins). Every save record carries a
+lock (server id + timestamp) written via `UpdateAsync`; a server only loads
+data it can lock, refreshes the lock on autosave, releases it on the final
+save, and steals only stale locks from crashed servers. A locked-out server
+gives the player a read-only session instead of the power to destroy data.
+
+**Testing:** pure logic (roll-odds mapping, relic lookups, merge eligibility,
+save-schema migrations) is factored into Roblox-free modules and unit-tested
+with [Lune](https://github.com/lune-org/lune) on every push — `lune run
+tests/run.luau` locally.
+
 **Data-driven content:** relics and rarities are pure data in `Config.luau` —
 adding a relic or retuning the odds touches no logic. Relic definitions are
 structured to carry future gameplay fields (defense-unit stats, power values)
@@ -68,11 +82,12 @@ without save migration.
 - **Luau** (typed) — plain modules, no frameworks
 - **Rojo** — filesystem ↔ Studio sync
 - **Roblox DataStore** — persistence
-- **GitHub Actions** — StyLua format check + Selene lint on every push
+- **GitHub Actions** — StyLua format check, Selene lint, and Lune unit tests
+  on every push
 
 ## Design principles
 
-Built for a mostly-young audience, engaging without being predatory:
+Built for a mostly-young audience:
 
 1. **No paid luck, ever.** Rolls come from playing. If monetization is ever
    added, it's cosmetics only.
