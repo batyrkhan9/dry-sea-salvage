@@ -106,6 +106,21 @@ test("relic names are globally unique", function()
 	end
 end)
 
+test("tiers are ordered from most to least common", function()
+	-- Lots of logic (merge direction, index layout) assumes this order.
+	for i = 2, #Config.Rarities do
+		local prev, cur = Config.Rarities[i - 1], Config.Rarities[i]
+		assert(cur.weight < prev.weight, `{cur.name} should be rarer than {prev.name}`)
+	end
+end)
+
+test("rarityColor falls back to white for unknown names", function()
+	local color = RelicUtil.rarityColor("Not A Rarity")
+	expectEqual(color.R, 1)
+	expectEqual(color.G, 1)
+	expectEqual(color.B, 1)
+end)
+
 test("merge cost is at least 2", function()
 	assert(Config.MergeCost >= 2, "merging fewer than 2 copies makes no sense")
 end)
