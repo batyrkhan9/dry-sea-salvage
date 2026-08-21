@@ -79,7 +79,7 @@ local function showNext()
 	showing = true
 
 	local color = RelicUtil.rarityColor(nextUp.rarityName)
-	bannerText.Text = ("%s salvaged %s - %s!"):format(nextUp.playerName, nextUp.relic, nextUp.rarityName)
+	bannerText.Text = ("%s salvaged %s (%s)!"):format(nextUp.playerName, nextUp.relic, nextUp.rarityName)
 	bannerText.TextColor3 = color
 	bannerStroke.Color = color
 
