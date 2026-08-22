@@ -109,11 +109,13 @@ local function runCooldownDisplay()
 	salvageButton.AutoButtonColor = false
 	salvageButton.BackgroundColor3 = Color3.fromRGB(120, 105, 80)
 
+	-- task.wait returns the time actually waited (always a bit more than
+	-- asked), so subtract that instead of the ideal 0.1 - otherwise the
+	-- countdown drifts and re-enables the button late.
 	local remaining = Config.RollCooldown
 	while remaining > 0 do
 		salvageButton.Text = ("SALVAGE (%d)"):format(math.ceil(remaining))
-		task.wait(0.1)
-		remaining -= 0.1
+		remaining -= task.wait(0.1)
 	end
 
 	salvageButton.Text = "SALVAGE"
