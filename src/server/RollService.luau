@@ -12,6 +12,7 @@ local Players = game:GetService("Players")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local RelicUtil = require(ReplicatedStorage.Shared.RelicUtil)
+local DataService = require(script.Parent.DataService)
 
 local RollService = {}
 
@@ -41,8 +42,26 @@ function RollService.tryRoll(player: Player): RollResult?
 	end
 	lastRollAt[player.UserId] = now
 
-	local ticket = math.random(1, RelicUtil.totalWeight())
+	-- Pity: after enough rolls without a rare, restrict the ticket draw to
+	-- the rare band. Odds WITHIN the band are unchanged, so the guarantee
+	-- doesn't distort which rare you get. If data isn't loaded yet we roll
+	-- normally and just skip the counter.
+	local data = DataService.get(player)
+	local rareMinTicket = RelicUtil.minTicketForRarity(Config.Pity.minRarityName) :: number
+	local pityTriggered = data ~= nil and data.rollsSinceRare >= Config.Pity.threshold
+
+	local minTicket = if pityTriggered then rareMinTicket else 1
+	local ticket = math.random(minTicket, RelicUtil.totalWeight())
 	local rarity = RelicUtil.rarityForTicket(ticket)
+
+	if data ~= nil then
+		if ticket >= rareMinTicket then
+			data.rollsSinceRare = 0
+		else
+			data.rollsSinceRare += 1
+		end
+	end
+
 	local relic = rollRelic(rarity.name)
 	return {
 		relic = relic,

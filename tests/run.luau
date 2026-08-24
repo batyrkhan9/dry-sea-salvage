@@ -154,6 +154,24 @@ test("out-of-range tickets are rejected", function()
 	assert(not pcall(RelicUtil.rarityForTicket, RelicUtil.totalWeight() + 1), "ticket over max should error")
 end)
 
+test("minTicketForRarity marks exact band starts", function()
+	expectEqual(RelicUtil.minTicketForRarity(Config.Rarities[1].name), 1)
+	for i, rarity in Config.Rarities do
+		local min = RelicUtil.minTicketForRarity(rarity.name)
+		expectEqual(RelicUtil.rarityForTicket(min).name, rarity.name, `band start of {rarity.name}`)
+		if i > 1 then
+			local before = RelicUtil.rarityForTicket(min - 1).name
+			expectEqual(before, Config.Rarities[i - 1].name, `ticket before {rarity.name}`)
+		end
+	end
+	expectEqual(RelicUtil.minTicketForRarity("Nonsense"), nil)
+end)
+
+test("pity config points at a real rarity with a sane threshold", function()
+	assert(RelicUtil.rarityIndex(Config.Pity.minRarityName) ~= nil, "minRarityName must exist")
+	assert(Config.Pity.threshold >= 1, "threshold must be positive")
+end)
+
 -- ---------- RelicUtil: lookups ----------
 
 test("rarityOf maps relics to their tier, nil for unknown", function()

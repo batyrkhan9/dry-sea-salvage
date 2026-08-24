@@ -72,6 +72,22 @@ function RelicUtil.rarityForTicket(ticket: number)
 	error("rarityForTicket fell through - check Config.Rarities weights")
 end
 
+-- The first lottery ticket belonging to this rarity's band (tickets are
+-- laid out in Config.Rarities order). Rolling a ticket in
+-- [minTicketForRarity(X), totalWeight] guarantees rarity X or better,
+-- which is how the pity system forces a rare without changing the
+-- relative odds inside the rare band. Nil for unknown names.
+function RelicUtil.minTicketForRarity(rarityName: string): number?
+	local below = 0
+	for _, rarity in Config.Rarities do
+		if rarity.name == rarityName then
+			return below + 1
+		end
+		below += rarity.weight
+	end
+	return nil
+end
+
 -- The display color of a rarity (white fallback for unknown names).
 function RelicUtil.rarityColor(rarityName: string): Color3
 	local index = rarityIndexByName[rarityName]

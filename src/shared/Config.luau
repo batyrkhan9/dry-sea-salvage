@@ -9,6 +9,14 @@ Config.AutosaveInterval = 120
 -- how many copies of the same relic it takes to merge into the next tier
 Config.MergeCost = 3
 
+-- pity system: after `threshold` rolls without hitting `minRarityName` or
+-- better, the next roll is guaranteed to land in that rare band (still
+-- weighted fairly within the band). Bad luck always has a floor.
+Config.Pity = {
+	threshold = 90,
+	minRarityName = "Storm",
+}
+
 -- rarities (by name) whose pulls get announced to the whole server
 Config.AnnounceRarities = {
 	["Ghost Ship"] = true,

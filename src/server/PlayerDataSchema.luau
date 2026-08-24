@@ -15,6 +15,7 @@ export type PlayerData = {
 	schemaVersion: number,
 	inventory: { [string]: number }, -- relic name -> how many owned right now
 	discovered: { [string]: boolean }, -- relic name -> ever found (survives merging away)
+	rollsSinceRare: number, -- pity counter: rolls since the last rare-band pull
 }
 
 function PlayerDataSchema.defaultData(): PlayerData
@@ -23,6 +24,7 @@ function PlayerDataSchema.defaultData(): PlayerData
 		schemaVersion = PlayerDataSchema.SCHEMA_VERSION,
 		inventory = {},
 		discovered = {},
+		rollsSinceRare = 0,
 	}
 end
 
