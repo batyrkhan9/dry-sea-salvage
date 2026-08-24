@@ -138,6 +138,17 @@ test("every ticket band maps to its rarity (first and last ticket)", function()
 	end
 end)
 
+test("all 1000 tickets: each tier is hit exactly its weight's worth", function()
+	local hits = {}
+	for ticket = 1, RelicUtil.totalWeight() do
+		local name = RelicUtil.rarityForTicket(ticket).name
+		hits[name] = (hits[name] or 0) + 1
+	end
+	for _, rarity in Config.Rarities do
+		expectEqual(hits[rarity.name], rarity.weight, rarity.name)
+	end
+end)
+
 test("out-of-range tickets are rejected", function()
 	assert(not pcall(RelicUtil.rarityForTicket, 0), "ticket 0 should error")
 	assert(not pcall(RelicUtil.rarityForTicket, RelicUtil.totalWeight() + 1), "ticket over max should error")
