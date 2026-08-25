@@ -95,8 +95,9 @@ Built for a mostly-young audience:
 2. **Equal odds for everyone** - identical RNG regardless of money or skill.
 3. **Reward thinking and planning** over pure grinding - the game should
    grow toward strategy, not toward faster clicking.
-4. **A pity system** (guaranteed rare after enough rolls) is planned so bad
-   luck always has a floor.
+4. **Bad luck has a floor.** A pity system guarantees a Storm-or-better
+   pull after 90 dry rolls, without distorting the odds inside the rare
+   band.
 
 ## Roadmap
 
