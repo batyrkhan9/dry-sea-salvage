@@ -20,6 +20,9 @@ local RollService = {}
 export type RollResult = {
 	relic: string,
 	rarityName: string,
+	-- Rolls left until the pity guarantee kicks in (0 = next roll is
+	-- guaranteed rare). Nil when the player's data isn't loaded.
+	rollsUntilPity: number?,
 }
 
 -- os.clock() timestamp of each player's last roll, keyed by UserId.
@@ -66,6 +69,7 @@ function RollService.tryRoll(player: Player): RollResult?
 	return {
 		relic = relic,
 		rarityName = rarity.name,
+		rollsUntilPity = if data ~= nil then math.max(0, Config.Pity.threshold - data.rollsSinceRare) else nil,
 	}
 end
 

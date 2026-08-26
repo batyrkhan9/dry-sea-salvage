@@ -53,7 +53,7 @@ rollEvent.OnServerEvent:Connect(function(player)
 	end
 	local count = InventoryService.addRelic(player, result.relic)
 	print(player.Name, "salvaged:", result.relic, "(" .. result.rarityName .. ") - now owns", count or "?")
-	rollEvent:FireClient(player, result.relic, result.rarityName)
+	rollEvent:FireClient(player, result.relic, result.rarityName, result.rollsUntilPity)
 	maybeAnnounce(player, result.relic, result.rarityName)
 end)
 

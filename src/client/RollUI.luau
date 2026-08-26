@@ -87,6 +87,20 @@ rarityLabel.Font = Enum.Font.Gotham
 rarityLabel.TextScaled = true
 rarityLabel.Parent = popup
 
+-- Pity progress readout, tucked under the salvage button. Hidden until
+-- the first roll result arrives (we only know the counter server-side).
+local pityLabel = Instance.new("TextLabel")
+pityLabel.Name = "PityLabel"
+pityLabel.AnchorPoint = Vector2.new(0.5, 1)
+pityLabel.Position = UDim2.fromScale(0.5, 0.955)
+pityLabel.Size = UDim2.fromOffset(260, 18)
+pityLabel.BackgroundTransparency = 1
+pityLabel.Font = Enum.Font.Gotham
+pityLabel.TextSize = 13
+pityLabel.TextColor3 = Color3.fromRGB(200, 185, 155)
+pityLabel.Text = ""
+pityLabel.Parent = screenGui
+
 -- Full-screen color flash used for high-tier pulls. Sits behind the popup
 -- and ignores input (it's a Frame, not a button - frames don't sink clicks).
 local flash = Instance.new("Frame")
@@ -142,6 +156,18 @@ function RollUI.tryRequestRoll()
 	task.spawn(runCooldownDisplay)
 	if requestCallback then
 		requestCallback()
+	end
+end
+
+-- Updates the pity readout under the button. nil hides it (data not
+-- loaded server-side, so there is nothing truthful to show).
+function RollUI.setPityStatus(rollsUntilPity: number?)
+	if rollsUntilPity == nil then
+		pityLabel.Text = ""
+	elseif rollsUntilPity == 0 then
+		pityLabel.Text = "next salvage: rare guaranteed!"
+	else
+		pityLabel.Text = ("rare guaranteed within %d salvages"):format(rollsUntilPity)
 	end
 end
 

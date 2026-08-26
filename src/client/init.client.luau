@@ -23,8 +23,9 @@ RollUI.onRollRequested(function()
 end)
 
 -- Server answered a roll -> show the popup, update any open panels
-rollEvent.OnClientEvent:Connect(function(relic, rarityName)
+rollEvent.OnClientEvent:Connect(function(relic, rarityName, rollsUntilPity)
 	RollUI.showResult(relic, rarityName)
+	RollUI.setPityStatus(rollsUntilPity)
 	InventoryUI.refreshIfOpen()
 	CollectionUI.refreshIfOpen()
 end)
