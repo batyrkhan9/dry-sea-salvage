@@ -125,7 +125,13 @@ local function makeRow(relicName: string, count: number, layoutOrder: number)
 	nameLabel.TextSize = 15
 	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 	nameLabel.TextColor3 = color
-	nameLabel.Text = ("%s  x%d"):format(relicName, count)
+	-- Mergeable relics below the merge cost show progress toward it
+	-- ("x2/3"), so players can see what they're saving up for.
+	if RelicUtil.isMergeable(relicName) and count < Config.MergeCost then
+		nameLabel.Text = ("%s  x%d/%d"):format(relicName, count, Config.MergeCost)
+	else
+		nameLabel.Text = ("%s  x%d"):format(relicName, count)
+	end
 	nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
 	nameLabel.Parent = row
 
