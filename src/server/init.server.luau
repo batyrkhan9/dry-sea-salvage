@@ -9,9 +9,10 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local RollService = require(script.RollService)
 local InventoryService = require(script.InventoryService)
 local MergeService = require(script.MergeService)
+local PlacementService = require(script.PlacementService)
+local CampService = require(script.CampService)
 require(script.DataService) -- starts load/save lifecycle on require
 require(script.MapBuilder).build() -- scatter the wrecks before players spawn
-require(script.CampService) -- assigns camp plots on join
 
 -- Client asks for a roll; server answers on the same event.
 local rollEvent = Instance.new("RemoteEvent")
@@ -23,10 +24,25 @@ local mergeFunction = Instance.new("RemoteFunction")
 mergeFunction.Name = "MergeFunction"
 mergeFunction.Parent = ReplicatedStorage
 
+-- Client asks to deploy a relic on its camp plot; returns the placement.
+local placeFunction = Instance.new("RemoteFunction")
+placeFunction.Name = "PlaceFunction"
+placeFunction.Parent = ReplicatedStorage
+
 -- Client asks for its current inventory (for the relics panel).
 local getInventoryFunction = Instance.new("RemoteFunction")
 getInventoryFunction.Name = "GetInventoryFunction"
 getInventoryFunction.Parent = ReplicatedStorage
+
+-- Server -> one client: your inventory changed outside a request you made
+-- (currently: picking a relic crate back up at camp).
+local inventoryChangedEvent = Instance.new("RemoteEvent")
+inventoryChangedEvent.Name = "InventoryChangedEvent"
+inventoryChangedEvent.Parent = ReplicatedStorage
+
+CampService.setPickupListener(function(player)
+	inventoryChangedEvent:FireClient(player)
+end)
 
 -- Server -> ALL clients: someone pulled a top-tier relic.
 local announceEvent = Instance.new("RemoteEvent")
@@ -69,6 +85,19 @@ mergeFunction.OnServerInvoke = function(player, relicName)
 	print(player.Name, "merged into:", result.relic, "(" .. result.rarityName .. ")")
 	maybeAnnounce(player, result.relic, result.rarityName)
 	return result
+end
+
+placeFunction.OnServerInvoke = function(player, relicName)
+	-- No cell from the client yet: the server picks the first free one.
+	-- The cell-picking UI will pass explicit coordinates later.
+	local placed, reason = PlacementService.tryPlace(player, relicName, nil, nil)
+	if placed == nil then
+		warn(("placement rejected for %s: %s"):format(player.Name, reason or "?"))
+		return nil
+	end
+	CampService.showPlacement(player, placed)
+	print(player.Name, "deployed:", placed.relicName)
+	return placed
 end
 
 getInventoryFunction.OnServerInvoke = function(player)

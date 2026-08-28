@@ -14,6 +14,8 @@ local AnnouncementUI = require(script.AnnouncementUI)
 local rollEvent = ReplicatedStorage:WaitForChild("RollEvent")
 local announceEvent = ReplicatedStorage:WaitForChild("AnnounceEvent")
 local mergeFunction = ReplicatedStorage:WaitForChild("MergeFunction")
+local placeFunction = ReplicatedStorage:WaitForChild("PlaceFunction")
+local inventoryChangedEvent = ReplicatedStorage:WaitForChild("InventoryChangedEvent")
 local getInventoryFunction = ReplicatedStorage:WaitForChild("GetInventoryFunction")
 local getCollectionFunction = ReplicatedStorage:WaitForChild("GetCollectionFunction")
 
@@ -49,6 +51,18 @@ InventoryUI.onMergeRequested(function(relicName)
 	end
 	InventoryUI.refreshIfOpen()
 	CollectionUI.refreshIfOpen() -- a merge can discover a new relic too
+end)
+
+-- Relics panel asks to deploy a relic -> server places it at camp
+InventoryUI.onPlaceRequested(function(relicName)
+	placeFunction:InvokeServer(relicName)
+	InventoryUI.refreshIfOpen() -- the placed copy left the inventory
+end)
+
+-- Server says our inventory changed without us asking (crate pickup at
+-- camp) -> refresh the panel so counts aren't stale
+inventoryChangedEvent.OnClientEvent:Connect(function()
+	InventoryUI.refreshIfOpen()
 end)
 
 -- Someone on the server pulled something rare -> banner for everyone

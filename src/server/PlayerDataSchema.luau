@@ -11,11 +11,18 @@ local PlayerDataSchema = {}
 -- tells future migration code exactly which shape it's holding.
 PlayerDataSchema.SCHEMA_VERSION = 1
 
+export type CampRelic = {
+	relicName: string,
+	cellX: number, -- 1..Config.Camp.gridCells
+	cellZ: number,
+}
+
 export type PlayerData = {
 	schemaVersion: number,
 	inventory: { [string]: number }, -- relic name -> how many owned right now
 	discovered: { [string]: boolean }, -- relic name -> ever found (survives merging away)
 	rollsSinceRare: number, -- pity counter: rolls since the last rare-band pull
+	campRelics: { CampRelic }, -- relics deployed on the player's camp plot
 }
 
 function PlayerDataSchema.defaultData(): PlayerData
@@ -25,6 +32,7 @@ function PlayerDataSchema.defaultData(): PlayerData
 		inventory = {},
 		discovered = {},
 		rollsSinceRare = 0,
+		campRelics = {},
 	}
 end
 
