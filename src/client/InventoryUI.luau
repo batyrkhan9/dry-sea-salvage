@@ -157,10 +157,11 @@ local function makeRow(relicName: string, count: number, layoutOrder: number)
 	nameLabel.TextSize = 15
 	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 	nameLabel.TextColor3 = color
-	-- Mergeable relics below the merge cost show progress toward it
-	-- ("x2/3"), so players can see what they're saving up for.
+	-- Mergeable relics below the merge cost show the threshold, so
+	-- players see what they're saving toward. Worded as "(3 to merge)"
+	-- rather than "x1/3", which misreads as a fraction of an item.
 	if RelicUtil.isMergeable(relicName) and count < Config.MergeCost then
-		nameLabel.Text = ("%s  x%d/%d"):format(relicName, count, Config.MergeCost)
+		nameLabel.Text = ("%s  x%d (%d to merge)"):format(relicName, count, Config.MergeCost)
 	else
 		nameLabel.Text = ("%s  x%d"):format(relicName, count)
 	end

@@ -16,7 +16,7 @@ local MapBuilder = {}
 local SEED = 1960 -- any fixed number works; changing it reshuffles the map
 local WRECK_COUNT = 14
 local DEBRIS_COUNT = 40
-local MIN_RADIUS = 70 -- keep a clear area around spawn
+local MIN_RADIUS = 140 -- clear area around spawn: camp plot ring + margin
 local MAX_RADIUS = 450
 local GROUND_Y = 0 -- top surface of the baseplate
 

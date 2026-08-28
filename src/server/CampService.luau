@@ -56,6 +56,25 @@ local function plotOrigin(index: number): CFrame
 	return CFrame.lookAt(Vector3.new(x, GROUND_Y, z), Vector3.new(0, GROUND_Y, 0))
 end
 
+-- Called with the player whenever they pick a relic back up by clicking
+-- its crate. The entry script uses this to tell that player's client the
+-- inventory changed - without it the relics panel goes stale, because
+-- crate clicks never pass through a client-initiated remote.
+local pickupListener: ((player: Player) -> ())? = nil
+
+function CampService.setPickupListener(listener: (player: Player) -> ())
+	pickupListener = listener
+end
+
+-- Called with (clicker, plotOwner) when anyone clicks a camp sign.
+-- init.server routes this into DuelService. Declared BEFORE the plot
+-- builder below so its click handler captures this local as an upvalue.
+local signClickListener: ((clicker: Player, owner: Player) -> ())? = nil
+
+function CampService.setSignClickListener(listener: (clicker: Player, owner: Player) -> ())
+	signClickListener = listener
+end
+
 local function buildPlotModel(player: Player, origin: CFrame): Model
 	local size = Config.Camp.plotSize
 	local model = Instance.new("Model")
@@ -82,18 +101,38 @@ local function buildPlotModel(player: Player, origin: CFrame): Model
 		post.Parent = model
 	end
 
-	-- Floating name sign over the front edge so plots are recognizable.
+	-- Camp sign at the front edge: names the plot AND is the duel
+	-- button - other players click it to challenge this camp.
+	local signPost = Instance.new("Part")
+	signPost.Name = "SignPost"
+	signPost.Anchored = true
+	signPost.Size = Vector3.new(0.8, 4, 0.8)
+	signPost.CFrame = origin * CFrame.new(0, 2, -size / 2 - 1.5)
+	signPost.Material = Enum.Material.Wood
+	signPost.Color = POST_WOOD
+	signPost.Parent = model
+
 	local sign = Instance.new("Part")
-	sign.Name = "SignAnchor"
+	sign.Name = "SignBoard"
 	sign.Anchored = true
-	sign.Transparency = 1
-	sign.CanCollide = false
-	sign.Size = Vector3.new(1, 1, 1)
-	sign.CFrame = origin * CFrame.new(0, 7, -size / 2)
+	sign.Size = Vector3.new(4.5, 2.2, 0.4)
+	sign.CFrame = origin * CFrame.new(0, 4.4, -size / 2 - 1.5)
+	sign.Material = Enum.Material.WoodPlanks
+	sign.Color = POST_WOOD
 	sign.Parent = model
+
+	local signClick = Instance.new("ClickDetector")
+	signClick.MaxActivationDistance = 32
+	signClick.Parent = sign
+	signClick.MouseClick:Connect(function(clicker)
+		if signClickListener then
+			signClickListener(clicker, player)
+		end
+	end)
 
 	local billboard = Instance.new("BillboardGui")
 	billboard.Size = UDim2.fromOffset(200, 36)
+	billboard.StudsOffset = Vector3.new(0, 2, 0)
 	billboard.MaxDistance = 200
 	billboard.AlwaysOnTop = false
 	billboard.Parent = sign
@@ -110,16 +149,6 @@ local function buildPlotModel(player: Player, origin: CFrame): Model
 
 	model.PrimaryPart = floor
 	return model
-end
-
--- Called with the player whenever they pick a relic back up by clicking
--- its crate. The entry script uses this to tell that player's client the
--- inventory changed - without it the relics panel goes stale, because
--- crate clicks never pass through a client-initiated remote.
-local pickupListener: ((player: Player) -> ())? = nil
-
-function CampService.setPickupListener(listener: (player: Player) -> ())
-	pickupListener = listener
 end
 
 -- The plot's center CFrame, for placement math later. Nil if the player
@@ -140,6 +169,12 @@ end
 -- Placeholder deployed-relic visual: a rarity-colored crate with a name
 -- tag. Clicking your own crate picks it back up (returns to inventory).
 local function buildRelicVisual(player: Player, plot: Plot, placed: CampRelic)
+	-- Guard against double-builds: a placement made in the window
+	-- between data load and restorePlacements' next poll would otherwise
+	-- get a crate from BOTH paths (showPlacement and the restorer).
+	if plot.model:FindFirstChild(("Relic_%d_%d"):format(placed.cellX, placed.cellZ)) then
+		return
+	end
 	local rarityName = RelicUtil.rarityOf(placed.relicName) or "?"
 	local size = Config.Camp.cellSize * 0.65
 

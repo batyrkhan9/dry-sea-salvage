@@ -15,10 +15,10 @@ Config.MergeCost = 3
 -- gridCells cells, each cellSize studs, must fit inside plotSize.
 Config.Camp = {
 	plotCount = 8, -- also the effective max players per server for v2
-	-- ring must keep neighbors apart: 8 plots at radius 50 sit ~38 studs
-	-- apart, just clearing the 36-stud plot width (and the ring + half a
-	-- plot stays inside MapBuilder's 70-stud wreck-free zone)
-	plotRingRadius = 50,
+	-- ring must keep neighbors apart: 8 plots at radius 90 sit ~69 studs
+	-- apart, giving real breathing room past the 36-stud plot width (and
+	-- the ring + half a plot stays inside MapBuilder's wreck-free zone)
+	plotRingRadius = 90,
 	plotSize = 36,
 	gridCells = 6,
 	cellSize = 6,
