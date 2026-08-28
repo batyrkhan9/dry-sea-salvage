@@ -54,6 +54,9 @@ local RelicUtil = loadModule("src/shared/RelicUtil.luau", {
 	Parent = { Config = "src/shared/Config.luau" },
 })
 local PlayerDataSchema = loadModule("src/server/PlayerDataSchema.luau", nil)
+local BattleResolver = loadModule("src/shared/BattleResolver.luau", {
+	Parent = { Config = "src/shared/Config.luau", RelicUtil = "src/shared/RelicUtil.luau" },
+})
 
 -- ---------- tiny test harness ----------
 
@@ -270,6 +273,74 @@ test("reconcile preserves existing data untouched", function()
 	expectEqual(data.inventory["Torn Net"], 3)
 	expectEqual(data.discovered["Old Compass"], true, "already-discovered kept")
 	expectEqual(data.discovered["Torn Net"], true, "owned implies discovered")
+end)
+
+-- ---------- BattleResolver ----------
+-- Roles used below (from Config): Rusty Chain=Breaker, Bent Anchor=Guard,
+-- Torn Net=Trap (all Rust); Ship Bell=Scout (Salt); Figurehead=Guard
+-- (Tide); Lightning Mast=Breaker (Storm).
+
+local function at(relicName: string, x: number, z: number)
+	return { relicName = relicName, cellX = x, cellZ = z }
+end
+
+test("a counter beats a much rarer relic", function()
+	local result = BattleResolver.resolve({ at("Torn Net", 1, 6) }, { at("Lightning Mast", 1, 6) })
+	expectEqual(result.winner, "A")
+	expectEqual(result.events[1].reason, "counter")
+	expectEqual(result.survivorsA, 1)
+	expectEqual(result.survivorsB, 0)
+end)
+
+test("same role falls back to tier; equal tiers stalemate out", function()
+	local byTier = BattleResolver.resolve({ at("Bent Anchor", 1, 6) }, { at("Figurehead", 1, 6) })
+	expectEqual(byTier.winner, "B")
+	expectEqual(byTier.events[1].reason, "tier")
+
+	local stalemate = BattleResolver.resolve({ at("Bent Anchor", 1, 6) }, { at("Bent Anchor", 1, 6) })
+	expectEqual(stalemate.winner, "draw")
+	expectEqual(stalemate.events[1].winner, "none")
+	expectEqual(stalemate.survivorsA, 0)
+end)
+
+test("an adjacent scout flips an equal-tier clash", function()
+	local result = BattleResolver.resolve(
+		{ at("Bent Anchor", 1, 6), at("Ship Bell", 2, 6) },
+		{ at("Bent Anchor", 1, 6) }
+	)
+	expectEqual(result.winner, "A")
+	expectEqual(result.events[1].reason, "tier", "scout bonus should decide the tie")
+	expectEqual(result.survivorsA, 2, "anchor and uncontested scout both survive")
+end)
+
+test("scouts lose any clash against a combat role", function()
+	local result = BattleResolver.resolve({ at("Ship Bell", 1, 6) }, { at("Rusty Chain", 1, 6) })
+	expectEqual(result.winner, "B")
+	expectEqual(result.events[1].reason, "scout")
+end)
+
+test("front row (higher z) clashes first and columns fight through", function()
+	local result = BattleResolver.resolve(
+		{ at("Bent Anchor", 1, 6), at("Torn Net", 1, 5) },
+		{ at("Rusty Chain", 1, 6) }
+	)
+	-- Breaker beats the front Guard, then the Trap catches the Breaker.
+	expectEqual(result.events[1].aRelic.relicName, "Bent Anchor")
+	expectEqual(result.events[1].winner, "B")
+	expectEqual(result.events[2].winner, "A")
+	expectEqual(result.winner, "A")
+end)
+
+test("resolution is deterministic", function()
+	local layoutA = { at("Bent Anchor", 1, 6), at("Torn Net", 2, 5), at("Ship Bell", 2, 6) }
+	local layoutB = { at("Rusty Chain", 1, 6), at("Figurehead", 2, 6) }
+	local first = BattleResolver.resolve(layoutA, layoutB)
+	local second = BattleResolver.resolve(layoutA, layoutB)
+	expectEqual(first.winner, second.winner)
+	expectEqual(#first.events, #second.events)
+	for i, event in first.events do
+		expectEqual(event.winner, second.events[i].winner, `event {i}`)
+	end
 end)
 
 -- ---------- summary ----------
