@@ -7,20 +7,22 @@
 	outcome; the client plays the same events back as animations - so the
 	fight kids watch is exactly the fight that was resolved.
 
-	Rules (design: choices must dominate collection size):
-	- Column by column, each side's front-most relic steps up (front =
-	  higher cellZ, the row nearest the opponent).
+	Rules (design: choices must dominate collection size, and the fight
+	order must be predictable from the board - "marching order"):
+	- Each army fights as ONE queue: front row first (higher cellZ),
+	  left to right within a row. Front fighters clash 1v1 until one
+	  army is wiped out - every relic fights.
 	- A role that counters the other's role WINS outright, whatever the
 	  rarity - the counter wheel is the core lesson.
 	- No counter either way: higher EFFECTIVE TIER wins; equal tiers
 	  exhaust both (mutual stalemate) so battles always end.
 	- Scouts can't fight (they lose any clash against a combat role;
 	  Scout vs Scout stalemates) but grant +1 effective tier to
-	  orthogonally adjacent allies, counted from the starting layout.
-	- Most survivors after all columns wins the battle.
+	  orthogonally adjacent allies, counted from the starting layout -
+	  so scouts belong in the BACK, buffing, not up front dying.
+	- The army left standing wins; mutual wipe-out is a draw.
 ]]
 
-local Config = require(script.Parent.Config)
 local RelicUtil = require(script.Parent.RelicUtil)
 
 local BattleResolver = {}
@@ -35,7 +37,6 @@ export type Side = "A" | "B"
 
 export type ClashEvent = {
 	kind: "clash",
-	column: number,
 	aRelic: PlacedRelic,
 	bRelic: PlacedRelic,
 	winner: Side | "none", -- "none" = mutual stalemate, both drop out
@@ -75,16 +76,16 @@ local function effectiveTiers(layout: { PlacedRelic }): { [PlacedRelic]: number 
 	return tiers
 end
 
--- The column's units for one side, front-most (highest cellZ) first.
-local function columnQueue(layout: { PlacedRelic }, column: number): { PlacedRelic }
-	local queue = {}
-	for _, placed in layout do
-		if placed.cellX == column then
-			table.insert(queue, placed)
-		end
-	end
+-- The whole army as one fight queue: front row first (higher cellZ),
+-- left to right (lower cellX) within a row. This IS the strategy - the
+-- order is readable straight off the board before any duel starts.
+local function marchingOrder(layout: { PlacedRelic }): { PlacedRelic }
+	local queue = table.clone(layout)
 	table.sort(queue, function(p, q)
-		return p.cellZ > q.cellZ
+		if p.cellZ ~= q.cellZ then
+			return p.cellZ > q.cellZ
+		end
+		return p.cellX < q.cellX
 	end)
 	return queue
 end
@@ -120,46 +121,40 @@ function BattleResolver.resolve(layoutA: { PlacedRelic }, layoutB: { PlacedRelic
 	local tiersA = effectiveTiers(layoutA)
 	local tiersB = effectiveTiers(layoutB)
 
-	local survivorsA = 0
-	local survivorsB = 0
 	local events: { ClashEvent } = {}
+	local queueA = marchingOrder(layoutA)
+	local queueB = marchingOrder(layoutB)
 
-	for column = 1, Config.Camp.gridCells do
-		local queueA = columnQueue(layoutA, column)
-		local queueB = columnQueue(layoutB, column)
-
-		-- Front units clash until one side's column is empty. Every
-		-- clash removes at least one unit, so this always terminates.
-		while #queueA > 0 and #queueB > 0 do
-			local a = queueA[1]
-			local b = queueB[1]
-			local winner, reason = decideClash(
-				RelicUtil.roleOf(a.relicName) :: string,
-				RelicUtil.roleOf(b.relicName) :: string,
-				tiersA[a],
-				tiersB[b]
-			)
-			table.insert(events, {
-				kind = "clash" :: "clash",
-				column = column,
-				aRelic = a,
-				bRelic = b,
-				winner = winner,
-				reason = reason :: any,
-			})
-			if winner == "A" then
-				table.remove(queueB, 1)
-			elseif winner == "B" then
-				table.remove(queueA, 1)
-			else
-				table.remove(queueA, 1)
-				table.remove(queueB, 1)
-			end
+	-- Front fighters clash until one army is wiped. Every clash removes
+	-- at least one unit, so this always terminates.
+	while #queueA > 0 and #queueB > 0 do
+		local a = queueA[1]
+		local b = queueB[1]
+		local winner, reason = decideClash(
+			RelicUtil.roleOf(a.relicName) :: string,
+			RelicUtil.roleOf(b.relicName) :: string,
+			tiersA[a],
+			tiersB[b]
+		)
+		table.insert(events, {
+			kind = "clash" :: "clash",
+			aRelic = a,
+			bRelic = b,
+			winner = winner,
+			reason = reason :: any,
+		})
+		if winner == "A" then
+			table.remove(queueB, 1)
+		elseif winner == "B" then
+			table.remove(queueA, 1)
+		else
+			table.remove(queueA, 1)
+			table.remove(queueB, 1)
 		end
-
-		survivorsA += #queueA
-		survivorsB += #queueB
 	end
+
+	local survivorsA = #queueA
+	local survivorsB = #queueB
 
 	local winner: Side | "draw" = "draw"
 	if survivorsA > survivorsB then

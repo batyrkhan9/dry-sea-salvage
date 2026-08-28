@@ -101,6 +101,36 @@ local function buildPlotModel(player: Player, origin: CFrame): Model
 		post.Parent = model
 	end
 
+	-- FRONT LINE marker: the high-cellZ edge (far side from spawn) is
+	-- where the army marches from in duels - row 6 fights first. A neon
+	-- strip plus label makes the marching order readable on the board.
+	local frontStrip = Instance.new("Part")
+	frontStrip.Name = "FrontStrip"
+	frontStrip.Anchored = true
+	frontStrip.CanCollide = false
+	frontStrip.Size = Vector3.new(size, 0.25, 1)
+	frontStrip.CFrame = origin * CFrame.new(0, 0.45, size / 2 - 0.5)
+	frontStrip.Material = Enum.Material.Neon
+	frontStrip.Color = Color3.fromRGB(200, 120, 70)
+	frontStrip.Transparency = 0.3
+	frontStrip.Parent = model
+
+	local frontBillboard = Instance.new("BillboardGui")
+	frontBillboard.Size = UDim2.fromOffset(130, 20)
+	frontBillboard.StudsOffset = Vector3.new(0, 1.6, 0)
+	frontBillboard.MaxDistance = 90
+	frontBillboard.Parent = frontStrip
+
+	local frontLabel = Instance.new("TextLabel")
+	frontLabel.Size = UDim2.fromScale(1, 1)
+	frontLabel.BackgroundTransparency = 1
+	frontLabel.Font = Enum.Font.GothamBold
+	frontLabel.TextScaled = true
+	frontLabel.TextColor3 = Color3.fromRGB(230, 150, 90)
+	frontLabel.TextStrokeTransparency = 0.5
+	frontLabel.Text = "FRONT - fights first"
+	frontLabel.Parent = frontBillboard
+
 	-- Camp sign at the front edge: names the plot AND is the duel
 	-- button - other players click it to challenge this camp.
 	local signPost = Instance.new("Part")

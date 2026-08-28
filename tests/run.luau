@@ -319,16 +319,32 @@ test("scouts lose any clash against a combat role", function()
 	expectEqual(result.events[1].reason, "scout")
 end)
 
-test("front row (higher z) clashes first and columns fight through", function()
+test("marching order: front row first, left to right within a row", function()
+	-- Brass Telescope (Breaker, Tide) fells A's Guard by counter and
+	-- A's Breaker by tier, so each fighter steps up in queue order:
+	-- Anchor (row 6, x2), Chain (row 6, x5), then Net (row 5).
 	local result = BattleResolver.resolve(
-		{ at("Bent Anchor", 1, 6), at("Torn Net", 1, 5) },
-		{ at("Rusty Chain", 1, 6) }
+		{ at("Torn Net", 4, 5), at("Bent Anchor", 2, 6), at("Rusty Chain", 5, 6) },
+		{ at("Brass Telescope", 1, 6) }
 	)
-	-- Breaker beats the front Guard, then the Trap catches the Breaker.
 	expectEqual(result.events[1].aRelic.relicName, "Bent Anchor")
-	expectEqual(result.events[1].winner, "B")
-	expectEqual(result.events[2].winner, "A")
+	expectEqual(result.events[2].aRelic.relicName, "Rusty Chain")
+	expectEqual(result.events[3].aRelic.relicName, "Torn Net")
+	-- ...and the Trap finally catches the Breaker.
 	expectEqual(result.winner, "A")
+end)
+
+test("every relic fights until one army is wiped", function()
+	local result = BattleResolver.resolve(
+		{ at("Bent Anchor", 1, 6), at("Bent Anchor", 2, 6), at("Bent Anchor", 3, 6) },
+		{ at("Figurehead", 1, 6) }
+	)
+	-- One higher-tier Guard grinds through all three: every A relic
+	-- appears in the event log, nobody sits out.
+	expectEqual(#result.events, 3)
+	expectEqual(result.winner, "B")
+	expectEqual(result.survivorsA, 0)
+	expectEqual(result.survivorsB, 1)
 end)
 
 test("resolution is deterministic", function()

@@ -28,6 +28,10 @@ export type DuelPayload = {
 	survivorsA: number,
 	survivorsB: number,
 	events: { BattleResolver.ClashEvent },
+	-- Full starting armies, so playback can stage EVERY relic (a relic
+	-- that never clashes still stands on the field).
+	layoutA: { BattleResolver.PlacedRelic },
+	layoutB: { BattleResolver.PlacedRelic },
 }
 
 type Pending = {
@@ -141,6 +145,8 @@ function DuelService.respond(target: Player, accepted: boolean)
 		survivorsA = result.survivorsA,
 		survivorsB = result.survivorsB,
 		events = result.events,
+		layoutA = challengerArmy,
+		layoutB = targetArmy,
 	}
 	print(
 		("duel: %s vs %s -> %s (%d-%d)"):format(
