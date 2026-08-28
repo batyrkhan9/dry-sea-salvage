@@ -64,39 +64,53 @@ Config.Rarities = {
 	{ name = "What the Sea Left", weight = 1, color = Color3.fromRGB(255, 215, 120) },
 }
 
--- Each relic is a table (not a bare string) on purpose: v2 base-defense
--- will add fields like `unit = { damage, range, placementType }` and
--- `power` per relic, with no save migration needed - saves only ever
--- store relic NAMES, never these tables.
+-- Duel roles and the counter wheel: Breaker beats Guard, Guard beats
+-- Trap, Trap beats Breaker; Scout counters nothing but supports allies
+-- (resolver rules). Roles decide fights - rarity only nudges - so a
+-- cheap, well-countered layout beats an expensive lazy one.
+export type Role = "Breaker" | "Guard" | "Trap" | "Scout"
+
+Config.RoleCounters = {
+	["Breaker"] = "Guard", -- key beats value
+	["Guard"] = "Trap",
+	["Trap"] = "Breaker",
+} :: { [string]: string }
+
+-- Each relic is a table (not a bare string) on purpose: gameplay fields
+-- like `role` ride along with no save migration needed - saves only
+-- ever store relic NAMES, never these tables.
 export type RelicDef = {
 	name: string,
+	role: Role,
 }
 
+-- Role spread: every tier from Rust to Tide covers several roles, so no
+-- strategy is locked behind rare pulls (choices over collection size).
 Config.Relics = {
 	["Rust"] = {
-		{ name = "Bent Anchor" },
-		{ name = "Torn Net" },
-		{ name = "Rusty Chain" },
+		{ name = "Bent Anchor", role = "Guard" },
+		{ name = "Torn Net", role = "Trap" },
+		{ name = "Rusty Chain", role = "Breaker" },
 	},
 	["Salt"] = {
-		{ name = "Ship Bell" },
-		{ name = "Old Compass" },
-		{ name = "Bottle Message" },
+		{ name = "Ship Bell", role = "Scout" },
+		{ name = "Old Compass", role = "Scout" },
+		{ name = "Bottle Message", role = "Trap" },
 	},
 	["Tide"] = {
-		{ name = "Figurehead" },
-		{ name = "Captain's Log" },
-		{ name = "Brass Telescope" },
+		{ name = "Figurehead", role = "Guard" },
+		{ name = "Captain's Log", role = "Scout" },
+		{ name = "Brass Telescope", role = "Breaker" },
 	},
 	["Storm"] = {
-		{ name = "Lightning Mast" },
-		{ name = "Black Flag" },
+		{ name = "Lightning Mast", role = "Breaker" },
+		{ name = "Black Flag", role = "Trap" },
 	},
 	["Ghost Ship"] = {
-		{ name = "Phantom Wheel" },
+		{ name = "Phantom Wheel", role = "Guard" },
 	},
 	["What the Sea Left"] = {
-		{ name = "The Key" },
+		{ name = "The Key", role = "Scout" },
 	},
 } :: { [string]: { RelicDef } }
 

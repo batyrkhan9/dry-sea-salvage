@@ -193,6 +193,46 @@ test("isMergeable: known non-top relics only", function()
 	expectEqual(RelicUtil.isMergeable("Definitely Not A Relic"), false)
 end)
 
+-- ---------- duel roles ----------
+
+test("every relic has a valid role", function()
+	local validRoles = { Breaker = true, Guard = true, Trap = true, Scout = true }
+	for _, pool in Config.Relics do
+		for _, relic in pool do
+			assert(validRoles[relic.role], `{relic.name} has invalid role {tostring(relic.role)}`)
+			expectEqual(RelicUtil.roleOf(relic.name), relic.role, relic.name)
+		end
+	end
+	expectEqual(RelicUtil.roleOf("Not A Relic"), nil)
+end)
+
+test("counter wheel is a clean 3-cycle over combat roles", function()
+	-- Breaker -> Guard -> Trap -> Breaker, nothing counters itself,
+	-- Scout stays outside the wheel entirely.
+	expectEqual(RelicUtil.roleCounters("Breaker", "Guard"), true)
+	expectEqual(RelicUtil.roleCounters("Guard", "Trap"), true)
+	expectEqual(RelicUtil.roleCounters("Trap", "Breaker"), true)
+	for role, beats in Config.RoleCounters do
+		assert(role ~= beats, `{role} counters itself`)
+		assert(role ~= "Scout" and beats ~= "Scout", "Scout must stay off the wheel")
+		expectEqual(RelicUtil.roleCounters(beats, role), false, `{beats} must not counter {role} back`)
+	end
+end)
+
+test("combat roles are all reachable in the common tiers (Rust..Tide)", function()
+	-- No strategy should be locked behind rare pulls: each combat role
+	-- must exist on at least one relic in the three common tiers.
+	local found = {}
+	for _, tier in { "Rust", "Salt", "Tide" } do
+		for _, relic in Config.Relics[tier] do
+			found[relic.role] = true
+		end
+	end
+	for _, role in { "Breaker", "Guard", "Trap", "Scout" } do
+		assert(found[role], `role {role} missing from common tiers`)
+	end
+end)
+
 -- ---------- PlayerDataSchema ----------
 
 test("defaultData has current schema version and fresh tables", function()

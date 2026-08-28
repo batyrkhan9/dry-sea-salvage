@@ -47,6 +47,24 @@ function RelicUtil.isMergeable(relicName: string): boolean
 	return rarityName ~= nil and RelicUtil.nextRarityName(rarityName) ~= nil
 end
 
+local roleByRelic: { [string]: string } = {}
+for _, relics in Config.Relics do
+	for _, relic in relics do
+		roleByRelic[relic.name] = relic.role
+	end
+end
+
+-- The duel role of a relic, or nil for unknown names.
+function RelicUtil.roleOf(relicName: string): string?
+	return roleByRelic[relicName]
+end
+
+-- True if `roleA` counters (beats) `roleB` on the wheel. Scouts counter
+-- nothing and are countered by nothing - their value is support.
+function RelicUtil.roleCounters(roleA: string, roleB: string): boolean
+	return Config.RoleCounters[roleA] == roleB
+end
+
 -- Sum of all rarity weights (the lottery's total ticket count).
 local totalWeight = 0
 for _, rarity in Config.Rarities do
