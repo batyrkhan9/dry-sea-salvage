@@ -9,6 +9,21 @@ Config.AutosaveInterval = 120
 -- how many copies of the same relic it takes to merge into the next tier
 Config.MergeCost = 3
 
+-- camp plots: every player gets one while they're in the server. Plots sit
+-- in a ring just inside the wreck-free zone around spawn (MapBuilder keeps
+-- wrecks 70+ studs out). The grid is for relic placement: gridCells x
+-- gridCells cells, each cellSize studs, must fit inside plotSize.
+Config.Camp = {
+	plotCount = 8, -- also the effective max players per server for v2
+	-- ring must keep neighbors apart: 8 plots at radius 50 sit ~38 studs
+	-- apart, just clearing the 36-stud plot width (and the ring + half a
+	-- plot stays inside MapBuilder's 70-stud wreck-free zone)
+	plotRingRadius = 50,
+	plotSize = 36,
+	gridCells = 6,
+	cellSize = 6,
+}
+
 -- pity system: after `threshold` rolls without hitting `minRarityName` or
 -- better, the next roll is guaranteed to land in that rare band (still
 -- weighted fairly within the band). Bad luck always has a floor.
