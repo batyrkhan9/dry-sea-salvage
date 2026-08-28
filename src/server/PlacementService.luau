@@ -98,6 +98,13 @@ function PlacementService.tryPlace(
 	return placed
 end
 
+-- The player's current placements (for the placement UI). Remotes copy
+-- tables on serialize, so handing out the live list is safe at the edge.
+function PlacementService.getCampRelics(player: Player): { CampRelic }
+	local data = DataService.get(player)
+	return if data ~= nil then data.campRelics else {}
+end
+
 -- Removes whatever is at the cell and returns it to the inventory.
 -- Returns the removed placement, or nil if the cell was empty.
 function PlacementService.tryRemove(player: Player, cellX: number, cellZ: number): CampRelic?

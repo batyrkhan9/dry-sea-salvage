@@ -10,11 +10,13 @@ local RollUI = require(script.RollUI)
 local InventoryUI = require(script.InventoryUI)
 local CollectionUI = require(script.CollectionUI)
 local AnnouncementUI = require(script.AnnouncementUI)
+local PlacementUI = require(script.PlacementUI)
 
 local rollEvent = ReplicatedStorage:WaitForChild("RollEvent")
 local announceEvent = ReplicatedStorage:WaitForChild("AnnounceEvent")
 local mergeFunction = ReplicatedStorage:WaitForChild("MergeFunction")
 local placeFunction = ReplicatedStorage:WaitForChild("PlaceFunction")
+local getCampRelicsFunction = ReplicatedStorage:WaitForChild("GetCampRelicsFunction")
 local inventoryChangedEvent = ReplicatedStorage:WaitForChild("InventoryChangedEvent")
 local getInventoryFunction = ReplicatedStorage:WaitForChild("GetInventoryFunction")
 local getCollectionFunction = ReplicatedStorage:WaitForChild("GetCollectionFunction")
@@ -53,9 +55,17 @@ InventoryUI.onMergeRequested(function(relicName)
 	CollectionUI.refreshIfOpen() -- a merge can discover a new relic too
 end)
 
--- Relics panel asks to deploy a relic -> server places it at camp
+-- Relics panel asks to deploy a relic -> enter cell-picking mode with
+-- the current occupancy so only free cells light up
 InventoryUI.onPlaceRequested(function(relicName)
-	placeFunction:InvokeServer(relicName)
+	local taken = getCampRelicsFunction:InvokeServer()
+	PlacementUI.enter(relicName, taken)
+	InventoryUI.refresh() -- re-arm the PLACE button (it disarms on click)
+end)
+
+-- A green cell was clicked -> ask the server to place there
+PlacementUI.onCellChosen(function(relicName, cellX, cellZ)
+	placeFunction:InvokeServer(relicName, cellX, cellZ)
 	InventoryUI.refreshIfOpen() -- the placed copy left the inventory
 end)
 

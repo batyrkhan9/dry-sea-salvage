@@ -29,6 +29,11 @@ local placeFunction = Instance.new("RemoteFunction")
 placeFunction.Name = "PlaceFunction"
 placeFunction.Parent = ReplicatedStorage
 
+-- Client asks which cells of its plot are occupied (for placement UI).
+local getCampRelicsFunction = Instance.new("RemoteFunction")
+getCampRelicsFunction.Name = "GetCampRelicsFunction"
+getCampRelicsFunction.Parent = ReplicatedStorage
+
 -- Client asks for its current inventory (for the relics panel).
 local getInventoryFunction = Instance.new("RemoteFunction")
 getInventoryFunction.Name = "GetInventoryFunction"
@@ -87,10 +92,14 @@ mergeFunction.OnServerInvoke = function(player, relicName)
 	return result
 end
 
-placeFunction.OnServerInvoke = function(player, relicName)
-	-- No cell from the client yet: the server picks the first free one.
-	-- The cell-picking UI will pass explicit coordinates later.
-	local placed, reason = PlacementService.tryPlace(player, relicName, nil, nil)
+getCampRelicsFunction.OnServerInvoke = function(player)
+	return PlacementService.getCampRelics(player)
+end
+
+placeFunction.OnServerInvoke = function(player, relicName, cellX, cellZ)
+	-- Cell comes from the placement UI; nil falls back to first-free
+	-- (kept as the server-side safety net, and for any older client).
+	local placed, reason = PlacementService.tryPlace(player, relicName, cellX, cellZ)
 	if placed == nil then
 		warn(("placement rejected for %s: %s"):format(player.Name, reason or "?"))
 		return nil
