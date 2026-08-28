@@ -11,6 +11,7 @@ local InventoryUI = require(script.InventoryUI)
 local CollectionUI = require(script.CollectionUI)
 local AnnouncementUI = require(script.AnnouncementUI)
 local PlacementUI = require(script.PlacementUI)
+local DuelUI = require(script.DuelUI)
 
 local rollEvent = ReplicatedStorage:WaitForChild("RollEvent")
 local announceEvent = ReplicatedStorage:WaitForChild("AnnounceEvent")
@@ -78,6 +79,26 @@ end)
 -- Someone on the server pulled something rare -> banner for everyone
 announceEvent.OnClientEvent:Connect(function(playerName, relic, rarityName)
 	AnnouncementUI.show(playerName, relic, rarityName)
+end)
+
+-- Duel flow: prompts, notices, and results come from the server; the
+-- accept/decline answer goes back.
+local duelPromptEvent = ReplicatedStorage:WaitForChild("DuelPromptEvent")
+local duelNoticeEvent = ReplicatedStorage:WaitForChild("DuelNoticeEvent")
+local duelResultEvent = ReplicatedStorage:WaitForChild("DuelResultEvent")
+local duelRespondEvent = ReplicatedStorage:WaitForChild("DuelRespondEvent")
+
+duelPromptEvent.OnClientEvent:Connect(function(challengerName)
+	DuelUI.showPrompt(challengerName)
+end)
+duelNoticeEvent.OnClientEvent:Connect(function(text)
+	DuelUI.showNotice(text)
+end)
+duelResultEvent.OnClientEvent:Connect(function(payload)
+	DuelUI.showResult(payload)
+end)
+DuelUI.onResponded(function(accepted)
+	duelRespondEvent:FireServer(accepted)
 end)
 
 -- Keyboard shortcut: R rolls, sharing the same cooldown gate as the button.

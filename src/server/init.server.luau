@@ -11,6 +11,7 @@ local InventoryService = require(script.InventoryService)
 local MergeService = require(script.MergeService)
 local PlacementService = require(script.PlacementService)
 local CampService = require(script.CampService)
+local DuelService = require(script.DuelService)
 require(script.DataService) -- starts load/save lifecycle on require
 require(script.MapBuilder).build() -- scatter the wrecks before players spawn
 
@@ -47,6 +48,43 @@ inventoryChangedEvent.Parent = ReplicatedStorage
 
 CampService.setPickupListener(function(player)
 	inventoryChangedEvent:FireClient(player)
+end)
+
+-- Duel remotes: prompt/notice/result go server -> client; the response
+-- (accept/decline) comes back client -> server.
+local duelPromptEvent = Instance.new("RemoteEvent")
+duelPromptEvent.Name = "DuelPromptEvent"
+duelPromptEvent.Parent = ReplicatedStorage
+
+local duelNoticeEvent = Instance.new("RemoteEvent")
+duelNoticeEvent.Name = "DuelNoticeEvent"
+duelNoticeEvent.Parent = ReplicatedStorage
+
+local duelResultEvent = Instance.new("RemoteEvent")
+duelResultEvent.Name = "DuelResultEvent"
+duelResultEvent.Parent = ReplicatedStorage
+
+local duelRespondEvent = Instance.new("RemoteEvent")
+duelRespondEvent.Name = "DuelRespondEvent"
+duelRespondEvent.Parent = ReplicatedStorage
+
+DuelService.setPromptSender(function(target, challengerName)
+	duelPromptEvent:FireClient(target, challengerName)
+end)
+DuelService.setNoticeSender(function(player, text)
+	duelNoticeEvent:FireClient(player, text)
+end)
+DuelService.setResultSender(function(player, payload)
+	duelResultEvent:FireClient(player, payload)
+end)
+
+duelRespondEvent.OnServerEvent:Connect(function(player, accepted)
+	DuelService.respond(player, accepted == true)
+end)
+
+-- Clicking a camp sign challenges its owner.
+CampService.setSignClickListener(function(clicker, owner)
+	DuelService.challenge(clicker, owner)
 end)
 
 -- Server -> ALL clients: someone pulled a top-tier relic.
