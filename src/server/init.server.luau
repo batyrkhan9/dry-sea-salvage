@@ -87,6 +87,11 @@ CampService.setSignClickListener(function(clicker, owner)
 	DuelService.challenge(clicker, owner)
 end)
 
+-- A duel changed someone's record -> refresh their camp sign.
+DuelService.setRecordUpdatedListener(function(player)
+	CampService.updateSignRecord(player)
+end)
+
 -- Server -> ALL clients: someone pulled a top-tier relic.
 local announceEvent = Instance.new("RemoteEvent")
 announceEvent.Name = "AnnounceEvent"

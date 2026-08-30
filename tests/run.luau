@@ -250,6 +250,16 @@ test("reconcile fills missing fields on an empty record", function()
 	expectEqual(data.schemaVersion, 1)
 	assert(type(data.inventory) == "table", "inventory filled in")
 	assert(type(data.discovered) == "table", "discovered filled in")
+	assert(type(data.campRelics) == "table", "campRelics filled in")
+	expectEqual(data.duelRecord.wins, 0, "duelRecord filled in")
+end)
+
+test("reconcile keeps an existing duel record", function()
+	local data = PlayerDataSchema.reconcile({
+		duelRecord = { wins = 5, losses = 2, streak = 3 },
+	})
+	expectEqual(data.duelRecord.wins, 5)
+	expectEqual(data.duelRecord.streak, 3)
 end)
 
 test("reconcile stamps version-less saves as schema 1, not current", function()

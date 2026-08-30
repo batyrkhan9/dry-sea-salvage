@@ -43,6 +43,14 @@ type Pending = {
 -- replaces an expired one but not a live one.
 local pendingByTargetId: { [number]: Pending } = {}
 
+-- Called for each participant after a duel changes their record, so the
+-- camp sign can refresh. Wired to CampService by init.server.
+local recordUpdated: ((player: Player) -> ())? = nil
+
+function DuelService.setRecordUpdatedListener(listener: (player: Player) -> ())
+	recordUpdated = listener
+end
+
 local sendPrompt: ((target: Player, challengerName: string) -> ())? = nil
 local sendNotice: ((player: Player, text: string) -> ())? = nil
 local sendResult: ((player: Player, payload: DuelPayload) -> ())? = nil
@@ -138,6 +146,27 @@ function DuelService.respond(target: Player, accepted: boolean)
 	end
 
 	local result = BattleResolver.resolve(challengerArmy, targetArmy)
+
+	-- Honor stakes: wins/losses/streak on the save. Draws change nothing.
+	if result.winner ~= "draw" then
+		local winnerPlayer = if result.winner == "A" then challenger else target
+		local loserPlayer = if result.winner == "A" then target else challenger
+		local winnerData = DataService.get(winnerPlayer)
+		local loserData = DataService.get(loserPlayer)
+		if winnerData ~= nil then
+			winnerData.duelRecord.wins += 1
+			winnerData.duelRecord.streak += 1
+		end
+		if loserData ~= nil then
+			loserData.duelRecord.losses += 1
+			loserData.duelRecord.streak = 0
+		end
+		if recordUpdated then
+			recordUpdated(winnerPlayer)
+			recordUpdated(loserPlayer)
+		end
+	end
+
 	local payload: DuelPayload = {
 		challengerName = challenger.Name,
 		targetName = target.Name,

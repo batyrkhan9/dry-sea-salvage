@@ -140,8 +140,10 @@ function PlacementUI.enter(relicName: string, taken: { { cellX: number, cellZ: n
 				pad.Anchored = true
 				pad.CanCollide = false
 				pad.Size = Vector3.new(Config.Camp.cellSize * 0.9, 0.2, Config.Camp.cellSize * 0.9)
+				-- z mirrored to match the server's cellCFrame: row 6 is
+				-- the spawn-facing FRONT edge.
 				pad.CFrame = origin
-					* CFrame.new((x - half) * Config.Camp.cellSize, 0.55, (z - half) * Config.Camp.cellSize)
+					* CFrame.new((x - half) * Config.Camp.cellSize, 0.55, (half - z) * Config.Camp.cellSize)
 				pad.Material = Enum.Material.Neon
 				pad.Color = FREE_COLOR
 				pad.Transparency = 0.55

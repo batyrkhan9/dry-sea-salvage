@@ -17,12 +17,19 @@ export type CampRelic = {
 	cellZ: number,
 }
 
+export type DuelRecord = {
+	wins: number,
+	losses: number,
+	streak: number, -- current consecutive wins; resets on a loss
+}
+
 export type PlayerData = {
 	schemaVersion: number,
 	inventory: { [string]: number }, -- relic name -> how many owned right now
 	discovered: { [string]: boolean }, -- relic name -> ever found (survives merging away)
 	rollsSinceRare: number, -- pity counter: rolls since the last rare-band pull
 	campRelics: { CampRelic }, -- relics deployed on the player's camp plot
+	duelRecord: DuelRecord, -- honor stakes: shown on the camp sign
 }
 
 function PlayerDataSchema.defaultData(): PlayerData
@@ -33,6 +40,7 @@ function PlayerDataSchema.defaultData(): PlayerData
 		discovered = {},
 		rollsSinceRare = 0,
 		campRelics = {},
+		duelRecord = { wins = 0, losses = 0, streak = 0 },
 	}
 end
 

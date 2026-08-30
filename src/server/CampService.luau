@@ -33,6 +33,7 @@ type Plot = {
 	index: number,
 	origin: CFrame, -- center of the plot floor, facing spawn
 	model: Model,
+	recordLabel: TextLabel, -- duel record line on the sign
 }
 
 local plotsByUserId: { [number]: Plot } = {}
@@ -101,15 +102,15 @@ local function buildPlotModel(player: Player, origin: CFrame): Model
 		post.Parent = model
 	end
 
-	-- FRONT LINE marker: the high-cellZ edge (far side from spawn) is
-	-- where the army marches from in duels - row 6 fights first. A neon
-	-- strip plus label makes the marching order readable on the board.
+	-- FRONT LINE marker on the spawn-facing edge (matches cellCFrame's
+	-- mirrored cellZ): row 6 stands here and fights first. A neon strip
+	-- plus label makes the marching order readable on the board.
 	local frontStrip = Instance.new("Part")
 	frontStrip.Name = "FrontStrip"
 	frontStrip.Anchored = true
 	frontStrip.CanCollide = false
 	frontStrip.Size = Vector3.new(size, 0.25, 1)
-	frontStrip.CFrame = origin * CFrame.new(0, 0.45, size / 2 - 0.5)
+	frontStrip.CFrame = origin * CFrame.new(0, 0.45, -(size / 2 - 0.5))
 	frontStrip.Material = Enum.Material.Neon
 	frontStrip.Color = Color3.fromRGB(200, 120, 70)
 	frontStrip.Transparency = 0.3
@@ -161,14 +162,14 @@ local function buildPlotModel(player: Player, origin: CFrame): Model
 	end)
 
 	local billboard = Instance.new("BillboardGui")
-	billboard.Size = UDim2.fromOffset(200, 36)
-	billboard.StudsOffset = Vector3.new(0, 2, 0)
+	billboard.Size = UDim2.fromOffset(200, 58)
+	billboard.StudsOffset = Vector3.new(0, 2.3, 0)
 	billboard.MaxDistance = 200
 	billboard.AlwaysOnTop = false
 	billboard.Parent = sign
 
 	local nameLabel = Instance.new("TextLabel")
-	nameLabel.Size = UDim2.fromScale(1, 1)
+	nameLabel.Size = UDim2.fromScale(1, 0.55)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Font = Enum.Font.GothamBold
 	nameLabel.TextScaled = true
@@ -177,8 +178,22 @@ local function buildPlotModel(player: Player, origin: CFrame): Model
 	nameLabel.Text = ("%s's Camp"):format(player.Name)
 	nameLabel.Parent = billboard
 
+	-- Duel record line, filled in once the player's data loads and
+	-- refreshed after every duel (the honor stakes live here).
+	local recordLabel = Instance.new("TextLabel")
+	recordLabel.Name = "RecordLabel"
+	recordLabel.Position = UDim2.fromScale(0, 0.55)
+	recordLabel.Size = UDim2.fromScale(1, 0.45)
+	recordLabel.BackgroundTransparency = 1
+	recordLabel.Font = Enum.Font.Gotham
+	recordLabel.TextScaled = true
+	recordLabel.TextColor3 = Color3.fromRGB(230, 190, 100)
+	recordLabel.TextStrokeTransparency = 0.5
+	recordLabel.Text = ""
+	recordLabel.Parent = billboard
+
 	model.PrimaryPart = floor
-	return model
+	return model, recordLabel
 end
 
 -- The plot's center CFrame, for placement math later. Nil if the player
@@ -191,9 +206,12 @@ end
 -- ---------- placed relic visuals ----------
 
 -- World CFrame of a grid cell's center, sitting on the plot floor.
+-- cellZ is mirrored (half - cellZ) so the FRONT row (cellZ = 6) sits on
+-- the spawn-facing edge of the plot, next to the sign - the army faces
+-- the world, not the empty seabed.
 local function cellCFrame(origin: CFrame, cellX: number, cellZ: number): CFrame
 	local half = (Config.Camp.gridCells + 1) / 2
-	return origin * CFrame.new((cellX - half) * Config.Camp.cellSize, 0.4, (cellZ - half) * Config.Camp.cellSize)
+	return origin * CFrame.new((cellX - half) * Config.Camp.cellSize, 0.4, (half - cellZ) * Config.Camp.cellSize)
 end
 
 -- Placeholder deployed-relic visual: a rarity-colored crate with a name
@@ -260,6 +278,22 @@ function CampService.showPlacement(player: Player, placed: CampRelic)
 	end
 end
 
+-- Refreshes the duel record line on the player's sign from their data.
+-- Called once data loads, and by init.server after every duel.
+function CampService.updateSignRecord(player: Player)
+	local plot = plotsByUserId[player.UserId]
+	local data = DataService.get(player)
+	if plot == nil or data == nil then
+		return
+	end
+	local record = data.duelRecord
+	local text = ("W %d · L %d"):format(record.wins, record.losses)
+	if record.streak >= 2 then
+		text ..= (" · %d streak"):format(record.streak)
+	end
+	plot.recordLabel.Text = text
+end
+
 -- Rebuild every saved placement once the player's data arrives. Data
 -- loads async (DataStore call), so poll briefly rather than racing it.
 local function restorePlacements(player: Player, plot: Plot)
@@ -280,6 +314,7 @@ local function restorePlacements(player: Player, plot: Plot)
 	for _, placed in data.campRelics do
 		buildRelicVisual(player, plot, placed)
 	end
+	CampService.updateSignRecord(player)
 end
 
 local function assignPlot(player: Player)
@@ -293,13 +328,14 @@ local function assignPlot(player: Player)
 	takenIndices[index] = true
 
 	local origin = plotOrigin(index)
-	local model = buildPlotModel(player, origin)
+	local model, recordLabel = buildPlotModel(player, origin)
 	model.Parent = workspace
 
 	local plot: Plot = {
 		index = index,
 		origin = origin,
 		model = model,
+		recordLabel = recordLabel,
 	}
 	plotsByUserId[player.UserId] = plot
 	task.spawn(restorePlacements, player, plot)
