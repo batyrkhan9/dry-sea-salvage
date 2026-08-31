@@ -2,52 +2,15 @@
 	Unit tests, run with Lune (dev-only tool, not part of the game):
 	    lune run tests/run.luau
 
-	Game modules use Roblox-style requires (script.Parent.X) and the
-	Color3 datatype, so a tiny loader below runs them with shims:
-	`script` becomes a table of file paths, `require` loads those paths,
-	and Color3 becomes a plain-table stand-in. Only pure logic modules
-	are loadable this way - anything touching game services is exercised
-	in Studio instead.
+	Game modules can't be required directly (Roblox-style requires and
+	datatypes), so tests/loader.luau runs them with shims. Only pure
+	logic modules are loadable this way - anything touching game
+	services is exercised in Studio instead.
 ]]
 
-local fs = require("@lune/fs")
-local luau = require("@lune/luau")
 local process = require("@lune/process")
 
--- ---------- module loader ----------
-
--- Plain-table stand-in for Roblox's Color3. Tests only need identity
--- (which color came back), not real color math.
-local Color3Stub = {
-	fromRGB = function(r: number, g: number, b: number)
-		return { R = r / 255, G = g / 255, B = b / 255 }
-	end,
-	new = function(r: number?, g: number?, b: number?)
-		return { R = r or 0, G = g or 0, B = b or 0 }
-	end,
-}
-
-local cache: { [string]: any } = {}
-
-local function loadModule(path: string, scriptShim: any): any
-	if cache[path] ~= nil then
-		return cache[path]
-	end
-	local fn = luau.load(fs.readFile(path), {
-		debugName = path,
-		environment = {
-			Color3 = Color3Stub,
-			script = scriptShim,
-			require = function(target: any)
-				assert(type(target) == "string", `unmapped require in {path}`)
-				return loadModule(target, nil)
-			end,
-		},
-	})
-	local result = fn()
-	cache[path] = result
-	return result
-end
+local loadModule = require("./loader")
 
 local Config = loadModule("src/shared/Config.luau", nil)
 local RelicUtil = loadModule("src/shared/RelicUtil.luau", {
@@ -327,6 +290,15 @@ test("scouts lose any clash against a combat role", function()
 	local result = BattleResolver.resolve({ at("Ship Bell", 1, 6) }, { at("Rusty Chain", 1, 6) })
 	expectEqual(result.winner, "B")
 	expectEqual(result.events[1].reason, "scout")
+end)
+
+test("scout mirror goes to the higher tier, not automatic stalemate", function()
+	local result = BattleResolver.resolve({ at("The Key", 1, 6) }, { at("Ship Bell", 1, 6) })
+	expectEqual(result.winner, "A")
+	expectEqual(result.events[1].reason, "tier")
+
+	local mirror = BattleResolver.resolve({ at("Ship Bell", 1, 6) }, { at("Ship Bell", 1, 6) })
+	expectEqual(mirror.winner, "draw")
 end)
 
 test("marching order: front row first, left to right within a row", function()
