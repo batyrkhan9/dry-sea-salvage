@@ -94,7 +94,7 @@ Config.Relics = {
 	},
 	["Salt"] = {
 		{ name = "Ship Bell", role = "Scout" },
-		{ name = "Old Compass", role = "Scout" },
+		{ name = "Old Compass", role = "Breaker" },
 		{ name = "Bottle Message", role = "Trap" },
 	},
 	["Tide"] = {

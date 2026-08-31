@@ -96,6 +96,13 @@ local function decideClash(aRole: string, bRole: string, aTier: number, bTier: n
 	local aIsScout = aRole == "Scout"
 	local bIsScout = bRole == "Scout"
 	if aIsScout and bIsScout then
+		-- Scout mirror: the better-supported (or rarer) scout wins, so
+		-- scouts aren't pure fodder against each other.
+		if aTier > bTier then
+			return "A", "tier"
+		elseif bTier > aTier then
+			return "B", "tier"
+		end
 		return "none", "stalemate"
 	elseif aIsScout then
 		return "B", "scout"
