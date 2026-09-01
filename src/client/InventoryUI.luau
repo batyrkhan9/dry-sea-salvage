@@ -157,13 +157,15 @@ local function makeRow(relicName: string, count: number, layoutOrder: number)
 	nameLabel.TextSize = 15
 	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 	nameLabel.TextColor3 = color
-	-- Mergeable relics below the merge cost show the threshold, so
-	-- players see what they're saving toward. Worded as "(3 to merge)"
-	-- rather than "x1/3", which misreads as a fraction of an item.
+	-- Show the deploy cost (budget currency) on every row, plus the
+	-- merge threshold when below it - worded as "(3 to merge)" rather
+	-- than "x1/3", which misreads as a fraction of an item.
+	local def = RelicUtil.defOf(relicName)
+	local costText = if def then (" · %dpt"):format(def.cost) else ""
 	if RelicUtil.isMergeable(relicName) and count < Config.MergeCost then
-		nameLabel.Text = ("%s  x%d (%d to merge)"):format(relicName, count, Config.MergeCost)
+		nameLabel.Text = ("%s  x%d%s (%d to merge)"):format(relicName, count, costText, Config.MergeCost)
 	else
-		nameLabel.Text = ("%s  x%d"):format(relicName, count)
+		nameLabel.Text = ("%s  x%d%s"):format(relicName, count, costText)
 	end
 	nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
 	nameLabel.Parent = row

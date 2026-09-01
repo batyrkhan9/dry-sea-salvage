@@ -235,13 +235,13 @@ local function buildRelicVisual(player: Player, plot: Plot, placed: CampRelic)
 	crate.Color = RelicUtil.rarityColor(rarityName)
 
 	local billboard = Instance.new("BillboardGui")
-	billboard.Size = UDim2.fromOffset(140, 22)
-	billboard.StudsOffset = Vector3.new(0, size / 2 + 1.2, 0)
+	billboard.Size = UDim2.fromOffset(150, 40)
+	billboard.StudsOffset = Vector3.new(0, size / 2 + 1.6, 0)
 	billboard.MaxDistance = 80
 	billboard.Parent = crate
 
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
+	label.Size = UDim2.fromScale(1, 0.55)
 	label.BackgroundTransparency = 1
 	label.Font = Enum.Font.Gotham
 	label.TextScaled = true
@@ -249,6 +249,20 @@ local function buildRelicVisual(player: Player, plot: Plot, placed: CampRelic)
 	label.TextStrokeTransparency = 0.5
 	label.Text = placed.relicName
 	label.Parent = billboard
+
+	-- Stats visible at camp, so opposing boards can be read (and your
+	-- own budget reasoned about) before any duel starts.
+	local def = RelicUtil.defOf(placed.relicName)
+	local statsLabel = Instance.new("TextLabel")
+	statsLabel.Position = UDim2.fromScale(0, 0.55)
+	statsLabel.Size = UDim2.fromScale(1, 0.45)
+	statsLabel.BackgroundTransparency = 1
+	statsLabel.Font = Enum.Font.Gotham
+	statsLabel.TextScaled = true
+	statsLabel.TextColor3 = Color3.fromRGB(230, 190, 100)
+	statsLabel.TextStrokeTransparency = 0.5
+	statsLabel.Text = if def then ("HP %d · ATK %d · %dpt"):format(def.hp, def.atk, def.cost) else ""
+	statsLabel.Parent = billboard
 
 	local click = Instance.new("ClickDetector")
 	click.MaxActivationDistance = 24

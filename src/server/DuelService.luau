@@ -14,7 +14,9 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Config = require(ReplicatedStorage.Shared.Config)
 local BattleResolver = require(ReplicatedStorage.Shared.BattleResolver)
+local RelicUtil = require(ReplicatedStorage.Shared.RelicUtil)
 local DataService = require(script.Parent.DataService)
 
 local DuelService = {}
@@ -73,27 +75,43 @@ local function notice(player: Player, text: string)
 	end
 end
 
--- A player's army = their placed relics. Nil means "can't duel" (data
--- not loaded, or nothing deployed).
-local function armyOf(player: Player): { BattleResolver.PlacedRelic }?
+-- A player's army = their placed relics. The reason distinguishes WHY
+-- a camp can't fight, so notices can say something actionable ("over
+-- budget" happens to layouts saved before the budget existed).
+local function armyOf(player: Player): ({ BattleResolver.PlacedRelic }?, "empty" | "budget" | nil)
 	local data = DataService.get(player)
 	if data == nil or #data.campRelics == 0 then
-		return nil
+		return nil, "empty"
 	end
-	return data.campRelics
+	if RelicUtil.armyCost(data.campRelics) > Config.Duel.budget then
+		return nil, "budget"
+	end
+	return data.campRelics, nil
 end
+
+local CANT_FIGHT_SELF = {
+	empty = "Deploy relics at your camp first!",
+	budget = ("Your camp is over the %d-point deploy budget - pick some relics up."):format(Config.Duel.budget),
+}
+
+local CANT_FIGHT_OTHER = {
+	empty = "%s has no relics deployed to fight.",
+	budget = "%s's camp is over the deploy budget right now.",
+}
 
 -- Challenger clicked the target's camp sign.
 function DuelService.challenge(challenger: Player, target: Player)
 	if challenger == target then
 		return -- clicking your own sign does nothing (for now)
 	end
-	if armyOf(challenger) == nil then
-		notice(challenger, "Place at least one relic at your camp first!")
+	local _, challengerProblem = armyOf(challenger)
+	if challengerProblem ~= nil then
+		notice(challenger, CANT_FIGHT_SELF[challengerProblem])
 		return
 	end
-	if armyOf(target) == nil then
-		notice(challenger, ("%s has no relics deployed to fight."):format(target.Name))
+	local _, targetProblem = armyOf(target)
+	if targetProblem ~= nil then
+		notice(challenger, CANT_FIGHT_OTHER[targetProblem]:format(target.Name))
 		return
 	end
 

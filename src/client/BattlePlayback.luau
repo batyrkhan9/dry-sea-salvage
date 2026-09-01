@@ -20,6 +20,7 @@ local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local RelicUtil = require(ReplicatedStorage.Shared.RelicUtil)
+local BattleResolver = require(ReplicatedStorage.Shared.BattleResolver)
 
 local BattlePlayback = {}
 
@@ -73,6 +74,82 @@ local function slotCFrame(side: string, relic: PlacedRelic): CFrame
 	return CFrame.new(x, GROUND_Y + CRATE / 2, z)
 end
 
+-- HP cards by crate key, so clashes can update the bars.
+type HpCard = {
+	fill: Frame,
+	hpText: TextLabel,
+	maxHp: number,
+}
+local cards: { [string]: HpCard } = {}
+
+local HP_GREEN = Color3.fromRGB(110, 200, 110)
+local HP_RED = Color3.fromRGB(200, 90, 70)
+
+local function setCardHp(card: HpCard, hp: number)
+	local fraction = math.clamp(hp / card.maxHp, 0, 1)
+	card.fill.Size = UDim2.fromScale(fraction, 1)
+	card.fill.BackgroundColor3 = if fraction > 0.35 then HP_GREEN else HP_RED
+	card.hpText.Text = ("%d/%d"):format(hp, card.maxHp)
+end
+
+-- Builds the always-readable overhead card: name, live HP bar, ATK.
+local function buildCard(crate: Part, relic: PlacedRelic, startHp: number)
+	local def = RelicUtil.defOf(relic.relicName)
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Size = UDim2.fromOffset(150, 54)
+	billboard.StudsOffset = Vector3.new(0, CRATE / 2 + 2.2, 0)
+	billboard.AlwaysOnTop = true -- readable at battle-camera distance
+	billboard.Parent = crate
+
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Size = UDim2.fromScale(1, 0.38)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Font = Enum.Font.GothamBold
+	nameLabel.TextScaled = true
+	nameLabel.TextColor3 = Color3.fromRGB(240, 230, 210)
+	nameLabel.TextStrokeTransparency = 0.4
+	nameLabel.Text = relic.relicName
+	nameLabel.Parent = billboard
+
+	local barBack = Instance.new("Frame")
+	barBack.Position = UDim2.fromScale(0.1, 0.42)
+	barBack.Size = UDim2.fromScale(0.8, 0.26)
+	barBack.BackgroundColor3 = Color3.fromRGB(30, 26, 22)
+	barBack.BorderSizePixel = 0
+	barBack.Parent = billboard
+
+	local fill = Instance.new("Frame")
+	fill.Size = UDim2.fromScale(1, 1)
+	fill.BackgroundColor3 = HP_GREEN
+	fill.BorderSizePixel = 0
+	fill.Parent = barBack
+
+	local hpText = Instance.new("TextLabel")
+	hpText.Size = UDim2.fromScale(1, 1)
+	hpText.BackgroundTransparency = 1
+	hpText.Font = Enum.Font.GothamBold
+	hpText.TextScaled = true
+	hpText.TextColor3 = Color3.fromRGB(255, 255, 255)
+	hpText.TextStrokeTransparency = 0.2
+	hpText.Parent = barBack
+
+	local atkLabel = Instance.new("TextLabel")
+	atkLabel.Position = UDim2.fromScale(0, 0.7)
+	atkLabel.Size = UDim2.fromScale(1, 0.3)
+	atkLabel.BackgroundTransparency = 1
+	atkLabel.Font = Enum.Font.Gotham
+	atkLabel.TextScaled = true
+	atkLabel.TextColor3 = Color3.fromRGB(230, 190, 100)
+	atkLabel.TextStrokeTransparency = 0.4
+	atkLabel.Text = ("ATK %d"):format(if def then def.atk else 0)
+	atkLabel.Parent = billboard
+
+	local card: HpCard = { fill = fill, hpText = hpText, maxHp = math.max(startHp, 1) }
+	setCardHp(card, startHp)
+	return card
+end
+
 local function buildCrate(side: string, relic: PlacedRelic, folder: Folder): Part
 	local rarityName = RelicUtil.rarityOf(relic.relicName) or "?"
 	local crate = Instance.new("Part")
@@ -83,55 +160,34 @@ local function buildCrate(side: string, relic: PlacedRelic, folder: Folder): Par
 	crate.CFrame = slotCFrame(side, relic)
 	crate.Material = Enum.Material.Metal
 	crate.Color = RelicUtil.rarityColor(rarityName)
-
-	local billboard = Instance.new("BillboardGui")
-	billboard.Size = UDim2.fromOffset(130, 20)
-	billboard.StudsOffset = Vector3.new(0, CRATE / 2 + 1, 0)
-	billboard.MaxDistance = 250
-	billboard.Parent = crate
-
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Font = Enum.Font.Gotham
-	label.TextScaled = true
-	label.TextColor3 = Color3.fromRGB(240, 230, 210)
-	label.TextStrokeTransparency = 0.5
-	label.Text = relic.relicName
-	label.Parent = billboard
-
 	crate.Parent = folder
 	return crate
 end
 
 -- ---------- clash captions ----------
 
--- How each winning role deals with its countered role - the caption
--- leads with the RULE so the wheel teaches itself.
-local COUNTER_VERBS = {
-	["Breaker"] = "BREAKER smashes GUARD",
-	["Guard"] = "GUARD outlasts TRAP",
-	["Trap"] = "TRAP catches BREAKER",
-}
-
+-- Captions narrate the arithmetic so the trade-offs teach themselves.
 local function describe(event: any): string
 	local aName = event.aRelic.relicName
 	local bName = event.bRelic.relicName
 
-	if event.reason == "counter" then
-		local winName = if event.winner == "A" then aName else bName
-		local loseName = if event.winner == "A" then bName else aName
-		local winRole = RelicUtil.roleOf(winName) or "?"
-		return ("%s! %s takes down %s."):format(COUNTER_VERBS[winRole] or "COUNTER", winName, loseName)
-	elseif event.reason == "scout" then
-		local scoutName = if event.winner == "A" then bName else aName
-		return ("%s is a SCOUT - scouts support, they don't fight!"):format(scoutName)
-	elseif event.reason == "tier" then
-		local winName = if event.winner == "A" then aName else bName
-		local loseName = if event.winner == "A" then bName else aName
-		return ("No counter either way - %s wins on higher tier over %s."):format(winName, loseName)
+	if event.winner == "none" then
+		return ("%s and %s take each other down!"):format(aName, bName)
 	end
-	return ("%s and %s are dead even - both exhaust!"):format(aName, bName)
+	local winName = if event.winner == "A" then aName else bName
+	local loseName = if event.winner == "A" then bName else aName
+	local winHp = if event.winner == "A" then event.aHpEnd else event.bHpEnd
+	if event.rounds == 0 then
+		return ("Ambush! %s springs first - %s falls before it can strike back!"):format(winName, loseName)
+	end
+	local opener = if event.ambushBy ~= "none" then "Ambush, then a brawl: " else ""
+	return ("%s%s falls after %d blows - %s stands with %d HP left."):format(
+		opener,
+		loseName,
+		event.rounds,
+		winName,
+		winHp
+	)
 end
 
 -- ---------- playback ----------
@@ -183,18 +239,26 @@ function BattlePlayback.play(payload: {
 	playing = true
 
 	task.spawn(function()
+		table.clear(cards) -- drop card refs from any previous battle
 		local stage = Instance.new("Folder")
 		stage.Name = "BattleStage"
 		stage.Parent = Workspace
 
 		-- Stage BOTH full armies in their board formations - relics that
 		-- never clash still stand on the field (and survive visibly).
+		-- HP cards start at aura-braced values, same as the resolver.
+		local bracedA = BattleResolver.startingHp(payload.layoutA)
+		local bracedB = BattleResolver.startingHp(payload.layoutB)
 		local crates: { [string]: Part } = {}
 		for _, relic in payload.layoutA do
-			crates[keyOf("A", relic)] = buildCrate("A", relic, stage)
+			local crate = buildCrate("A", relic, stage)
+			crates[keyOf("A", relic)] = crate
+			cards[keyOf("A", relic)] = buildCard(crate, relic, bracedA[relic.cellX .. "_" .. relic.cellZ] or 1)
 		end
 		for _, relic in payload.layoutB do
-			crates[keyOf("B", relic)] = buildCrate("B", relic, stage)
+			local crate = buildCrate("B", relic, stage)
+			crates[keyOf("B", relic)] = crate
+			cards[keyOf("B", relic)] = buildCard(crate, relic, bracedB[relic.cellX .. "_" .. relic.cellZ] or 1)
 		end
 
 		-- Camera: hold a side view of the stage for the whole battle.
@@ -224,6 +288,18 @@ function BattlePlayback.play(payload: {
 
 			caption.Text = describe(event)
 			task.wait(1.1)
+
+			-- Update both bars to the clash outcome BEFORE anyone sinks,
+			-- so the fatal blow is visible on the card.
+			local aCard = cards[keyOf("A", event.aRelic)]
+			local bCard = cards[keyOf("B", event.bRelic)]
+			if aCard then
+				setCardHp(aCard, event.aHpEnd)
+			end
+			if bCard then
+				setCardHp(bCard, event.bHpEnd)
+			end
+			task.wait(0.35)
 
 			if event.winner == "A" then
 				sink(bCrate)

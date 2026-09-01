@@ -16,6 +16,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local RelicUtil = require(ReplicatedStorage.Shared.RelicUtil)
 
 local PlacementUI = {}
 
@@ -124,7 +125,20 @@ function PlacementUI.enter(relicName: string, taken: { { cellX: number, cellZ: n
 	end
 
 	activeRelicName = relicName
-	bannerText.Text = ("Placing %s - pick a green cell"):format(relicName)
+	-- Budget readout: what this deploy costs against the hard cap.
+	local def = RelicUtil.defOf(relicName)
+	local used = RelicUtil.armyCost(taken)
+	local cost = if def then def.cost else 0
+	if used + cost > Config.Duel.budget then
+		bannerText.Text = ("%s costs %dpt - over budget (%d/%d used)"):format(relicName, cost, used, Config.Duel.budget)
+	else
+		bannerText.Text = ("Placing %s (%dpt) - budget %d/%d - pick a green cell"):format(
+			relicName,
+			cost,
+			used + cost,
+			Config.Duel.budget
+		)
+	end
 	banner.Visible = true
 
 	local folder = Instance.new("Folder")

@@ -88,6 +88,12 @@ function PlacementService.tryPlace(
 		end
 	end
 
+	-- Deploy budget: the army's total cost is hard-capped for everyone.
+	local def = RelicUtil.defOf(relicName) :: any
+	if RelicUtil.armyCost(data.campRelics) + def.cost > Config.Duel.budget then
+		return nil, "over deploy budget"
+	end
+
 	-- Consume the inventory copy FIRST; a failure here costs nothing.
 	if not InventoryService.removeRelic(player, relicName, 1) then
 		return nil, "relic not in inventory"
