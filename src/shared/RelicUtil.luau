@@ -47,22 +47,35 @@ function RelicUtil.isMergeable(relicName: string): boolean
 	return rarityName ~= nil and RelicUtil.nextRarityName(rarityName) ~= nil
 end
 
-local roleByRelic: { [string]: string } = {}
+local defByRelic: { [string]: Config.RelicDef } = {}
 for _, relics in Config.Relics do
 	for _, relic in relics do
-		roleByRelic[relic.name] = relic.role
+		defByRelic[relic.name] = relic
 	end
 end
 
--- The duel role of a relic, or nil for unknown names.
-function RelicUtil.roleOf(relicName: string): string?
-	return roleByRelic[relicName]
+-- The full stat definition of a relic, or nil for unknown names.
+function RelicUtil.defOf(relicName: string): Config.RelicDef?
+	return defByRelic[relicName]
 end
 
--- True if `roleA` counters (beats) `roleB` on the wheel. Scouts counter
--- nothing and are countered by nothing - their value is support.
-function RelicUtil.roleCounters(roleA: string, roleB: string): boolean
-	return Config.RoleCounters[roleA] == roleB
+-- The archetype label of a relic, or nil for unknown names.
+function RelicUtil.roleOf(relicName: string): string?
+	local def = defByRelic[relicName]
+	return def and def.role
+end
+
+-- Total deploy cost of a list of { relicName } entries. Unknown names
+-- count as 0 (they can't be placed in the first place).
+function RelicUtil.armyCost(army: { { relicName: string } }): number
+	local total = 0
+	for _, entry in army do
+		local def = defByRelic[entry.relicName]
+		if def ~= nil then
+			total += def.cost
+		end
+	end
+	return total
 end
 
 -- Sum of all rarity weights (the lottery's total ticket count).

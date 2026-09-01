@@ -161,28 +161,35 @@ end)
 
 -- ---------- duel roles ----------
 
-test("every relic has a valid role", function()
+test("every relic has a valid role and sane stats", function()
 	local validRoles = { Breaker = true, Guard = true, Trap = true, Scout = true }
 	for _, pool in Config.Relics do
 		for _, relic in pool do
 			assert(validRoles[relic.role], `{relic.name} has invalid role {tostring(relic.role)}`)
 			expectEqual(RelicUtil.roleOf(relic.name), relic.role, relic.name)
+			assert(relic.hp > 0, `{relic.name} needs positive hp`)
+			assert(relic.atk >= 0, `{relic.name} needs non-negative atk`)
+			assert(relic.cost > 0, `{relic.name} needs positive cost`)
+			if relic.role == "Scout" then
+				assert(relic.aura and relic.aura > 0, `scout {relic.name} needs an aura`)
+			else
+				expectEqual(relic.aura, nil, `{relic.name}: only scouts carry auras`)
+			end
 		end
 	end
 	expectEqual(RelicUtil.roleOf("Not A Relic"), nil)
 end)
 
-test("counter wheel is a clean 3-cycle over combat roles", function()
-	-- Breaker -> Guard -> Trap -> Breaker, nothing counters itself,
-	-- Scout stays outside the wheel entirely.
-	expectEqual(RelicUtil.roleCounters("Breaker", "Guard"), true)
-	expectEqual(RelicUtil.roleCounters("Guard", "Trap"), true)
-	expectEqual(RelicUtil.roleCounters("Trap", "Breaker"), true)
-	for role, beats in Config.RoleCounters do
-		assert(role ~= beats, `{role} counters itself`)
-		assert(role ~= "Scout" and beats ~= "Scout", "Scout must stay off the wheel")
-		expectEqual(RelicUtil.roleCounters(beats, role), false, `{beats} must not counter {role} back`)
-	end
+test("armyCost sums deploy costs; unknown names count 0", function()
+	expectEqual(RelicUtil.armyCost({}), 0)
+	expectEqual(
+		RelicUtil.armyCost({
+			{ relicName = "Bent Anchor" }, -- 2
+			{ relicName = "The Key" }, -- 10
+			{ relicName = "Not A Relic" }, -- 0
+		}),
+		12
+	)
 end)
 
 test("combat roles are all reachable in the common tiers (Rust..Tide)", function()
@@ -249,84 +256,87 @@ test("reconcile preserves existing data untouched", function()
 end)
 
 -- ---------- BattleResolver ----------
--- Roles used below (from Config): Rusty Chain=Breaker, Bent Anchor=Guard,
--- Torn Net=Trap (all Rust); Ship Bell=Scout (Salt); Figurehead=Guard
--- (Tide); Lightning Mast=Breaker (Storm).
+-- Stats used below (from Config): Bent Anchor 8hp/2atk, Torn Net 3/3
+-- (Trap), Rusty Chain 4/4, Ship Bell 3/1 aura 1 (Scout), Bottle Message
+-- 4/4 (Trap), Figurehead 14/3, Phantom Wheel 26/6.
 
 local function at(relicName: string, x: number, z: number)
 	return { relicName = relicName, cellX = x, cellZ = z }
 end
 
-test("a counter beats a much rarer relic", function()
-	local result = BattleResolver.resolve({ at("Torn Net", 1, 6) }, { at("Lightning Mast", 1, 6) })
+test("attrition: simultaneous rounds until one drops", function()
+	local result = BattleResolver.resolve({ at("Figurehead", 1, 6) }, { at("Rusty Chain", 1, 6) })
+	-- 14/3 vs 4/4: round 1 -> 10 vs 1, round 2 -> 6 vs dead.
+	local clash = result.events[1]
+	expectEqual(clash.rounds, 2)
+	expectEqual(clash.winner, "A")
+	expectEqual(clash.aHpEnd, 6)
+	expectEqual(clash.bHpEnd, 0)
+	expectEqual(clash.ambushBy, "none")
 	expectEqual(result.winner, "A")
-	expectEqual(result.events[1].reason, "counter")
-	expectEqual(result.survivorsA, 1)
+end)
+
+test("survivors carry damage into their next clash", function()
+	local result = BattleResolver.resolve(
+		{ at("Phantom Wheel", 1, 6) },
+		{ at("Rusty Chain", 1, 6), at("Rusty Chain", 2, 6), at("Rusty Chain", 3, 6) }
+	)
+	-- 26hp wheel one-shots each 4hp chain but takes 4 per clash:
+	-- enters clash 3 at 18hp, leaves at 14.
+	expectEqual(#result.events, 3)
+	expectEqual(result.events[3].aHpStart, 18)
+	expectEqual(result.events[3].aHpEnd, 14)
+	expectEqual(result.winner, "A")
 	expectEqual(result.survivorsB, 0)
 end)
 
-test("same role falls back to tier; equal tiers stalemate out", function()
-	local byTier = BattleResolver.resolve({ at("Bent Anchor", 1, 6) }, { at("Figurehead", 1, 6) })
-	expectEqual(byTier.winner, "B")
-	expectEqual(byTier.events[1].reason, "tier")
-
-	local stalemate = BattleResolver.resolve({ at("Bent Anchor", 1, 6) }, { at("Bent Anchor", 1, 6) })
-	expectEqual(stalemate.winner, "draw")
-	expectEqual(stalemate.events[1].winner, "none")
-	expectEqual(stalemate.survivorsA, 0)
+test("mutual knockout in the final clash is a draw", function()
+	local result = BattleResolver.resolve({ at("Rusty Chain", 1, 6) }, { at("Rusty Chain", 1, 6) })
+	expectEqual(result.events[1].winner, "none")
+	expectEqual(result.winner, "draw")
+	expectEqual(result.survivorsA, 0)
+	expectEqual(result.survivorsB, 0)
 end)
 
-test("an adjacent scout flips an equal-tier clash", function()
+test("trap ambush strikes first; a killing ambush takes no damage back", function()
+	local result = BattleResolver.resolve({ at("Black Flag", 1, 6) }, { at("Rusty Chain", 1, 6) })
+	-- Flag's 6 atk ambush kills the 4hp chain before any exchange.
+	local clash = result.events[1]
+	expectEqual(clash.ambushBy, "A")
+	expectEqual(clash.rounds, 0)
+	expectEqual(clash.winner, "A")
+	expectEqual(clash.aHpEnd, 7, "unhurt after a clean ambush")
+
+	-- Two traps ambush each other simultaneously: 3/3 vs 4/4 - the
+	-- bigger trap survives the exchange of ambushes.
+	local trapDuel = BattleResolver.resolve({ at("Torn Net", 1, 6) }, { at("Bottle Message", 1, 6) })
+	expectEqual(trapDuel.events[1].ambushBy, "both")
+	expectEqual(trapDuel.events[1].winner, "B")
+end)
+
+test("scout aura braces adjacent allies with bonus HP", function()
 	local result = BattleResolver.resolve(
 		{ at("Bent Anchor", 1, 6), at("Ship Bell", 2, 6) },
 		{ at("Bent Anchor", 1, 6) }
 	)
-	expectEqual(result.winner, "A")
-	expectEqual(result.events[1].reason, "tier", "scout bonus should decide the tie")
+	-- Braced anchor enters at 11 HP (8 + aura 3) and outlasts the
+	-- otherwise-even mirror grind.
+	expectEqual(result.events[1].aHpStart, 11)
+	expectEqual(result.events[1].bHpStart, 8)
+	expectEqual(result.events[1].winner, "A")
 	expectEqual(result.survivorsA, 2, "anchor and uncontested scout both survive")
 end)
 
-test("scouts lose any clash against a combat role", function()
-	local result = BattleResolver.resolve({ at("Ship Bell", 1, 6) }, { at("Rusty Chain", 1, 6) })
-	expectEqual(result.winner, "B")
-	expectEqual(result.events[1].reason, "scout")
-end)
-
-test("scout mirror goes to the higher tier, not automatic stalemate", function()
-	local result = BattleResolver.resolve({ at("The Key", 1, 6) }, { at("Ship Bell", 1, 6) })
-	expectEqual(result.winner, "A")
-	expectEqual(result.events[1].reason, "tier")
-
-	local mirror = BattleResolver.resolve({ at("Ship Bell", 1, 6) }, { at("Ship Bell", 1, 6) })
-	expectEqual(mirror.winner, "draw")
-end)
-
-test("marching order: front row first, left to right within a row", function()
-	-- Brass Telescope (Breaker, Tide) fells A's Guard by counter and
-	-- A's Breaker by tier, so each fighter steps up in queue order:
-	-- Anchor (row 6, x2), Chain (row 6, x5), then Net (row 5).
+test("marching order: front row first, left to right; whole army fights", function()
 	local result = BattleResolver.resolve(
 		{ at("Torn Net", 4, 5), at("Bent Anchor", 2, 6), at("Rusty Chain", 5, 6) },
-		{ at("Brass Telescope", 1, 6) }
+		{ at("Phantom Wheel", 1, 6) }
 	)
 	expectEqual(result.events[1].aRelic.relicName, "Bent Anchor")
 	expectEqual(result.events[2].aRelic.relicName, "Rusty Chain")
 	expectEqual(result.events[3].aRelic.relicName, "Torn Net")
-	-- ...and the Trap finally catches the Breaker.
-	expectEqual(result.winner, "A")
-end)
-
-test("every relic fights until one army is wiped", function()
-	local result = BattleResolver.resolve(
-		{ at("Bent Anchor", 1, 6), at("Bent Anchor", 2, 6), at("Bent Anchor", 3, 6) },
-		{ at("Figurehead", 1, 6) }
-	)
-	-- One higher-tier Guard grinds through all three: every A relic
-	-- appears in the event log, nobody sits out.
-	expectEqual(#result.events, 3)
+	expectEqual(#result.events, 3, "nobody sits out")
 	expectEqual(result.winner, "B")
-	expectEqual(result.survivorsA, 0)
-	expectEqual(result.survivorsB, 1)
 end)
 
 test("resolution is deterministic", function()
@@ -338,6 +348,7 @@ test("resolution is deterministic", function()
 	expectEqual(#first.events, #second.events)
 	for i, event in first.events do
 		expectEqual(event.winner, second.events[i].winner, `event {i}`)
+		expectEqual(event.aHpEnd, second.events[i].aHpEnd, `event {i} hp`)
 	end
 end)
 

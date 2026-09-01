@@ -64,53 +64,64 @@ Config.Rarities = {
 	{ name = "What the Sea Left", weight = 1, color = Color3.fromRGB(255, 215, 120) },
 }
 
--- Duel roles and the counter wheel: Breaker beats Guard, Guard beats
--- Trap, Trap beats Breaker; Scout counters nothing but supports allies
--- (resolver rules). Roles decide fights - rarity only nudges - so a
--- cheap, well-countered layout beats an expensive lazy one.
+-- Duel combat is pure stats under a hard deploy budget - no counter
+-- wheel, nothing is an auto-win. Roles are stat ARCHETYPES only:
+--   Guard   = tank: high HP, modest ATK, grinds enemies down
+--   Breaker = damage: high ATK, fragile
+--   Trap    = ambusher: strikes first once per clash, then trades
+--   Scout   = support: weak fighter, but BRACES orthogonally adjacent
+--             allies: each gains +aura bonus HP at battle start (HP
+--             never overkills, so the bonus always pays its way)
 export type Role = "Breaker" | "Guard" | "Trap" | "Scout"
 
-Config.RoleCounters = {
-	["Breaker"] = "Guard", -- key beats value
-	["Guard"] = "Trap",
-	["Trap"] = "Breaker",
-} :: { [string]: string }
+-- The hard deploy cap, identical for every player, forever. Fairness
+-- lives here: collections buy OPTIONS under the cap, never raw power.
+Config.Duel = {
+	budget = 20,
+}
 
 -- Each relic is a table (not a bare string) on purpose: gameplay fields
--- like `role` ride along with no save migration needed - saves only
--- ever store relic NAMES, never these tables.
+-- ride along with no save migration needed - saves only ever store
+-- relic NAMES, never these tables.
 export type RelicDef = {
 	name: string,
 	role: Role,
+	hp: number,
+	atk: number,
+	cost: number,
+	aura: number?, -- Scout only: bonus HP granted to adjacent allies
 }
 
--- Role spread: every tier from Rust to Tide covers several roles, so no
--- strategy is locked behind rare pulls (choices over collection size).
+-- Stat table. Tuning intent (verified by tools/balance.luau):
+-- cost scales with tier; raw stats scale a bit FASTER than cost so
+-- rares feel special, but cheap relics stay competitive per point in
+-- numbers - quantity vs quality must be a genuine choice under the
+-- budget cap, never a solved question.
 Config.Relics = {
-	["Rust"] = {
-		{ name = "Bent Anchor", role = "Guard" },
-		{ name = "Torn Net", role = "Trap" },
-		{ name = "Rusty Chain", role = "Breaker" },
+	["Rust"] = { -- cost 2
+		{ name = "Bent Anchor", role = "Guard", hp = 8, atk = 2, cost = 2 },
+		{ name = "Torn Net", role = "Trap", hp = 3, atk = 2, cost = 2 },
+		{ name = "Rusty Chain", role = "Breaker", hp = 4, atk = 4, cost = 2 },
 	},
-	["Salt"] = {
-		{ name = "Ship Bell", role = "Scout" },
-		{ name = "Old Compass", role = "Breaker" },
-		{ name = "Bottle Message", role = "Trap" },
+	["Salt"] = { -- cost 3
+		{ name = "Ship Bell", role = "Scout", hp = 6, atk = 1, cost = 3, aura = 3 },
+		{ name = "Old Compass", role = "Breaker", hp = 6, atk = 5, cost = 3 },
+		{ name = "Bottle Message", role = "Trap", hp = 4, atk = 3, cost = 3 },
 	},
-	["Tide"] = {
-		{ name = "Figurehead", role = "Guard" },
-		{ name = "Captain's Log", role = "Scout" },
-		{ name = "Brass Telescope", role = "Breaker" },
+	["Tide"] = { -- cost 4
+		{ name = "Figurehead", role = "Guard", hp = 14, atk = 3, cost = 4 },
+		{ name = "Captain's Log", role = "Scout", hp = 8, atk = 2, cost = 4, aura = 4 },
+		{ name = "Brass Telescope", role = "Breaker", hp = 7, atk = 7, cost = 4 },
 	},
-	["Storm"] = {
-		{ name = "Lightning Mast", role = "Breaker" },
-		{ name = "Black Flag", role = "Trap" },
+	["Storm"] = { -- cost 6
+		{ name = "Lightning Mast", role = "Breaker", hp = 10, atk = 10, cost = 6 },
+		{ name = "Black Flag", role = "Trap", hp = 7, atk = 6, cost = 6 },
 	},
-	["Ghost Ship"] = {
-		{ name = "Phantom Wheel", role = "Guard" },
+	["Ghost Ship"] = { -- cost 8
+		{ name = "Phantom Wheel", role = "Guard", hp = 26, atk = 6, cost = 8 },
 	},
-	["What the Sea Left"] = {
-		{ name = "The Key", role = "Scout" },
+	["What the Sea Left"] = { -- cost 10
+		{ name = "The Key", role = "Scout", hp = 12, atk = 4, cost = 10, aura = 5 },
 	},
 } :: { [string]: { RelicDef } }
 

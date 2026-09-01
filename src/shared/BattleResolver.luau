@@ -5,22 +5,26 @@
 	resolve() takes both players' placed layouts and returns the outcome
 	PLUS an ordered event script of every clash. The server trusts the
 	outcome; the client plays the same events back as animations - so the
-	fight kids watch is exactly the fight that was resolved.
+	fight kids watch is exactly the fight that was scored.
 
-	Rules (design: choices must dominate collection size, and the fight
-	order must be predictable from the board - "marching order"):
-	- Each army fights as ONE queue: front row first (higher cellZ),
-	  left to right within a row. Front fighters clash 1v1 until one
-	  army is wiped out - every relic fights.
-	- A role that counters the other's role WINS outright, whatever the
-	  rarity - the counter wheel is the core lesson.
-	- No counter either way: higher EFFECTIVE TIER wins; equal tiers
-	  exhaust both (mutual stalemate) so battles always end.
-	- Scouts can't fight (they lose any clash against a combat role;
-	  Scout vs Scout stalemates) but grant +1 effective tier to
-	  orthogonally adjacent allies, counted from the starting layout -
-	  so scouts belong in the BACK, buffing, not up front dying.
-	- The army left standing wins; mutual wipe-out is a draw.
+	Combat model - STATS + ATTRITION, nothing is an auto-win:
+	- Armies fight in marching order: front row first (higher cellZ),
+	  left to right within a row. Front fighters clash 1v1.
+	- A clash is simultaneous blows, round by round (hp -= enemy atk),
+	  until one or both drop. Whoever survives CARRIES its damage into
+	  its next clash - attrition is the strategy's currency.
+	- Trap archetype: strikes first ONCE at the start of each clash it
+	  fights (ambush) - if that kills, no blow comes back.
+	- Scout auras BRACE: a relic's starting HP is base + the aura of
+	  every orthogonally adjacent friendly Scout, counted from the
+	  starting layout, so support value is readable on the board before
+	  the fight. (HP, not ATK, on purpose: bonus ATK is wasted as
+	  overkill against cheap units; bonus HP always has to be chewed
+	  through, so bracing pays consistently.)
+	- The army left standing wins; a mutual final clash can draw.
+	Fairness lives outside this module: armies must fit the hard deploy
+	budget (Config.Duel.budget), enforced at placement and re-checked at
+	challenge time.
 ]]
 
 local RelicUtil = require(script.Parent.RelicUtil)
@@ -39,8 +43,16 @@ export type ClashEvent = {
 	kind: "clash",
 	aRelic: PlacedRelic,
 	bRelic: PlacedRelic,
-	winner: Side | "none", -- "none" = mutual stalemate, both drop out
-	reason: "counter" | "tier" | "scout" | "stalemate",
+	-- Stats as they entered this clash (after auras / earlier damage).
+	aHpStart: number,
+	bHpStart: number,
+	aAtk: number,
+	bAtk: number,
+	ambushBy: Side | "both" | "none", -- who got a free first strike
+	rounds: number, -- simultaneous exchanges after any ambush
+	aHpEnd: number, -- 0 = died in this clash
+	bHpEnd: number,
+	winner: Side | "none", -- "none" = both dropped
 }
 
 export type BattleResult = {
@@ -50,130 +62,137 @@ export type BattleResult = {
 	events: { ClashEvent },
 }
 
--- Effective tier = rarity index + number of orthogonally adjacent
--- friendly Scouts in the STARTING layout. Static on purpose: the bonus
--- is readable on the board before the fight, which is what makes scout
--- placement a plannable decision rather than a mid-battle surprise.
-local function effectiveTiers(layout: { PlacedRelic }): { [PlacedRelic]: number }
-	local scoutAt: { [string]: boolean } = {}
+type Fighter = {
+	placed: PlacedRelic,
+	hp: number,
+	atk: number,
+	isTrap: boolean,
+}
+
+-- Builds fighters with aura-adjusted ATK from the starting layout.
+local function buildFighters(layout: { PlacedRelic }): { Fighter }
+	local auraAt: { [string]: number } = {}
 	for _, placed in layout do
-		if RelicUtil.roleOf(placed.relicName) == "Scout" then
-			scoutAt[placed.cellX .. "," .. placed.cellZ] = true
+		local def = RelicUtil.defOf(placed.relicName)
+		if def and def.aura then
+			auraAt[placed.cellX .. "," .. placed.cellZ] = def.aura
 		end
 	end
 
-	local tiers: { [PlacedRelic]: number } = {}
+	local fighters: { Fighter } = {}
 	for _, placed in layout do
-		local rarityName = RelicUtil.rarityOf(placed.relicName) :: string
-		local tier = RelicUtil.rarityIndex(rarityName) :: number
+		local def = RelicUtil.defOf(placed.relicName) :: any
+		local hp = def.hp
 		for _, offset in { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } } do
-			if scoutAt[(placed.cellX + offset[1]) .. "," .. (placed.cellZ + offset[2])] then
-				tier += 1
-			end
+			hp += auraAt[(placed.cellX + offset[1]) .. "," .. (placed.cellZ + offset[2])] or 0
 		end
-		tiers[placed] = tier
+		table.insert(fighters, {
+			placed = placed,
+			hp = hp,
+			atk = def.atk,
+			isTrap = def.role == "Trap",
+		})
 	end
-	return tiers
-end
 
--- The whole army as one fight queue: front row first (higher cellZ),
--- left to right (lower cellX) within a row. This IS the strategy - the
--- order is readable straight off the board before any duel starts.
-local function marchingOrder(layout: { PlacedRelic }): { PlacedRelic }
-	local queue = table.clone(layout)
-	table.sort(queue, function(p, q)
-		if p.cellZ ~= q.cellZ then
-			return p.cellZ > q.cellZ
+	-- Marching order: front row first (higher cellZ), left to right.
+	table.sort(fighters, function(p, q)
+		if p.placed.cellZ ~= q.placed.cellZ then
+			return p.placed.cellZ > q.placed.cellZ
 		end
-		return p.cellX < q.cellX
+		return p.placed.cellX < q.placed.cellX
 	end)
-	return queue
+	return fighters
 end
 
--- Decides one clash. Returns the winning side ("none" for stalemate)
--- and the reason, from A's perspective ordering.
-local function decideClash(aRole: string, bRole: string, aTier: number, bTier: number): (Side | "none", string)
-	local aIsScout = aRole == "Scout"
-	local bIsScout = bRole == "Scout"
-	if aIsScout and bIsScout then
-		-- Scout mirror: the better-supported (or rarer) scout wins, so
-		-- scouts aren't pure fodder against each other.
-		if aTier > bTier then
-			return "A", "tier"
-		elseif bTier > aTier then
-			return "B", "tier"
-		end
-		return "none", "stalemate"
-	elseif aIsScout then
-		return "B", "scout"
-	elseif bIsScout then
-		return "A", "scout"
+-- Starting (aura-braced) HP for every relic in a layout, keyed by
+-- "cellX_cellZ". The battle playback uses this so HP bars show braced
+-- values from the first frame, identical to what the resolver fought with.
+function BattleResolver.startingHp(layout: { PlacedRelic }): { [string]: number }
+	local byCell: { [string]: number } = {}
+	for _, fighter in buildFighters(layout) do
+		byCell[fighter.placed.cellX .. "_" .. fighter.placed.cellZ] = fighter.hp
 	end
-
-	if RelicUtil.roleCounters(aRole, bRole) then
-		return "A", "counter"
-	elseif RelicUtil.roleCounters(bRole, aRole) then
-		return "B", "counter"
-	end
-
-	if aTier > bTier then
-		return "A", "tier"
-	elseif bTier > aTier then
-		return "B", "tier"
-	end
-	return "none", "stalemate"
+	return byCell
 end
 
 function BattleResolver.resolve(layoutA: { PlacedRelic }, layoutB: { PlacedRelic }): BattleResult
-	local tiersA = effectiveTiers(layoutA)
-	local tiersB = effectiveTiers(layoutB)
-
+	local queueA = buildFighters(layoutA)
+	local queueB = buildFighters(layoutB)
 	local events: { ClashEvent } = {}
-	local queueA = marchingOrder(layoutA)
-	local queueB = marchingOrder(layoutB)
 
-	-- Front fighters clash until one army is wiped. Every clash removes
-	-- at least one unit, so this always terminates.
 	while #queueA > 0 and #queueB > 0 do
 		local a = queueA[1]
 		local b = queueB[1]
-		local winner, reason = decideClash(
-			RelicUtil.roleOf(a.relicName) :: string,
-			RelicUtil.roleOf(b.relicName) :: string,
-			tiersA[a],
-			tiersB[b]
-		)
+
+		local aHpStart, bHpStart = a.hp, b.hp
+
+		-- Ambush: traps strike once before the exchange. Two traps
+		-- ambush each other simultaneously.
+		local ambushBy: "A" | "B" | "both" | "none" = "none"
+		if a.isTrap and b.isTrap then
+			ambushBy = "both"
+			a.hp -= b.atk
+			b.hp -= a.atk
+		elseif a.isTrap then
+			ambushBy = "A"
+			b.hp -= a.atk
+		elseif b.isTrap then
+			ambushBy = "B"
+			a.hp -= b.atk
+		end
+
+		-- Simultaneous rounds until someone (or both) drop. Each round
+		-- strictly reduces total hp, so this always terminates.
+		local rounds = 0
+		while a.hp > 0 and b.hp > 0 do
+			rounds += 1
+			a.hp -= b.atk
+			b.hp -= a.atk
+		end
+
+		local aDead = a.hp <= 0
+		local bDead = b.hp <= 0
+		local winner: "A" | "B" | "none" = "none"
+		if aDead and not bDead then
+			winner = "B"
+		elseif bDead and not aDead then
+			winner = "A"
+		end
+
 		table.insert(events, {
 			kind = "clash" :: "clash",
-			aRelic = a,
-			bRelic = b,
+			aRelic = a.placed,
+			bRelic = b.placed,
+			aHpStart = aHpStart,
+			bHpStart = bHpStart,
+			aAtk = a.atk,
+			bAtk = b.atk,
+			ambushBy = ambushBy,
+			rounds = rounds,
+			aHpEnd = math.max(a.hp, 0),
+			bHpEnd = math.max(b.hp, 0),
 			winner = winner,
-			reason = reason :: any,
 		})
-		if winner == "A" then
-			table.remove(queueB, 1)
-		elseif winner == "B" then
+
+		if aDead then
 			table.remove(queueA, 1)
-		else
-			table.remove(queueA, 1)
+		end
+		if bDead then
 			table.remove(queueB, 1)
 		end
 	end
 
-	local survivorsA = #queueA
-	local survivorsB = #queueB
-
 	local winner: Side | "draw" = "draw"
-	if survivorsA > survivorsB then
+	if #queueA > 0 then
 		winner = "A"
-	elseif survivorsB > survivorsA then
+	elseif #queueB > 0 then
 		winner = "B"
 	end
 
 	return {
 		winner = winner,
-		survivorsA = survivorsA,
-		survivorsB = survivorsB,
+		survivorsA = #queueA,
+		survivorsB = #queueB,
 		events = events,
 	}
 end
