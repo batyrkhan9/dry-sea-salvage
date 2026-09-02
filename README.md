@@ -26,18 +26,24 @@ positioning beats a bigger collection.
 Every player gets a camp plot with a 6x6 grid. Relics you deploy there are
 your army, and the board is the strategy:
 
-- **Roles, not stats.** Every relic has a role - Breaker, Guard, Trap, or
-  Scout - on a rock-paper-scissors counter wheel (Breaker smashes Guard,
-  Guard outlasts Trap, Trap catches Breaker). A counter wins outright, so a
-  common-tier Trap takes down a rare Breaker. Rarity only breaks ties.
-- **Marching order.** Armies fight as a queue readable straight off the
-  board: front row first, left to right. Who tanks first, what you protect
-  in the back, where your Scouts stand (they can't fight, but they boost
-  adjacent allies) - that's the skill.
-- **Challenge flow.** Click another player's camp sign, they accept, and the
-  server resolves both layouts deterministically. Both players then watch
-  the same animated replay, clash by clash, with captions that teach the
-  rule behind every outcome ("TRAP catches BREAKER!").
+- **A hard deploy budget.** Every army must fit under the same 20-point
+  cap, forever. Rare relics are stronger but cost more points, and their
+  efficiency per point varies - so quantity vs quality is a genuine
+  decision, and a big collection buys options, never raw power.
+- **Stats, not trump cards.** Every relic has HP, ATK, and a cost.
+  Archetypes shape the numbers - Guards tank, Breakers hit hard and die
+  fast, Traps strike first once per clash, Scouts brace adjacent allies
+  with bonus HP - but nothing wins automatically; every clash is
+  arithmetic a kid can follow.
+- **Attrition in marching order.** Armies fight as a queue readable
+  straight off the board: front row first, left to right. Fighters trade
+  simultaneous blows until one drops, and survivors carry their damage
+  into the next clash - so a wall of cheap units can grind down a
+  monster, and who tanks first is real tactics.
+- **Challenge flow.** Click another player's camp sign, they accept, and
+  the server resolves both layouts deterministically. Both players watch
+  the same animated replay with live HP bars on every fighter, clash by
+  clash, so you can trace exactly where a fight was won.
 - **Honor stakes only.** Wins, losses, and streaks live on your camp sign.
   Nobody ever loses a relic - losing costs pride and teaches a lesson.
 
@@ -70,7 +76,7 @@ src/
 │   ├── BattlePlayback.luau - animated clash-by-clash duel replay
 │   └── Sound.luau         - config-driven sound playback
 └── shared/               (ReplicatedStorage)
-    ├── Config.luau        - ALL tuning: rarities, roles, weights, costs
+    ├── Config.luau        - ALL tuning: rarities, stats, costs, budget
     ├── RelicUtil.luau     - pure lookups shared by server and client
     └── BattleResolver.luau - deterministic duel resolution (pure, tested)
 ```
@@ -85,7 +91,17 @@ mutates.
 two layouts in, a winner plus an ordered event script out. The server scores
 the script; both clients animate the identical script, so the replay players
 watch can never disagree with the result. Determinism also makes every battle
-rule unit-testable, including "a common Trap must beat a rare Breaker".
+rule unit-testable - ambush timing, damage carry-over, aura bracing.
+
+**Simulation-driven balance.** Because the resolver is pure, a Lune script
+(`tools/balance.luau`) plays thousands of seeded battles per run: a matrix of
+hand-built archetype armies plus a Monte Carlo sweep of random budget-legal
+armies, reporting win rates per role and quantity-vs-quality signals. The
+stat table was tuned against it, and it caught a structural design flaw
+before any player did: scout auras originally granted bonus ATK, which
+simulations showed being wasted as overkill; switching the aura to bonus HP
+(which always has to be chewed through) took the scout-support archetype from
+losing every matchup to a healthy counter-pick.
 
 **Data flow:** client fires a remote → server service validates and executes →
 result returns to the requesting client (and broadcasts to all clients for
@@ -104,15 +120,15 @@ save, and steals only stale locks from crashed servers. A locked-out server
 gives the player a read-only session instead of the power to destroy data.
 
 **Testing:** pure logic (roll-odds mapping, relic lookups, merge eligibility,
-save-schema migrations, the battle resolver and counter wheel) is factored
+save-schema migrations, the full battle resolver) is factored
 into Roblox-free modules and unit-tested with
 [Lune](https://github.com/lune-org/lune) on every push - `lune run
 tests/run.luau` locally, 30 tests and counting.
 
-**Data-driven content:** relics and rarities are pure data in `Config.luau` -
-adding a relic or retuning the odds touches no logic. Relic definitions are
-structured to carry future gameplay fields (unit stats, power values)
-without save migration.
+**Data-driven content:** relics, rarities, stats, and the deploy budget are
+pure data in `Config.luau` - adding a relic or retuning balance touches no
+logic. Saves only ever store relic names, which is why the entire combat
+redesign (counter wheel to stat attrition) shipped with zero save migration.
 
 ## Tech stack
 
@@ -129,9 +145,9 @@ Built for a mostly-young audience:
 1. **No paid luck, ever.** Rolls come from playing. If monetization is ever
    added, it's cosmetics only.
 2. **Equal odds for everyone** - identical RNG regardless of money or skill.
-3. **Reward thinking and planning** over pure grinding - in duels, choices
-   dominate collection size: counters are relative, stakes are honor-only,
-   and a cheap clever layout beats an expensive lazy one.
+3. **Reward thinking and planning** over pure grinding - in duels, every
+   army fits the same point budget, stakes are honor-only, and a cheap
+   clever layout beats an expensive lazy one.
 4. **Bad luck has a floor.** A pity system guarantees a Storm-or-better
    pull after 90 dry rolls, without distorting the odds inside the rare
    band.
@@ -142,8 +158,9 @@ Built mechanism by mechanism, each layer on the last:
 
 - ✅ **Salvage loop** - weighted rolls, persistent inventory, merging,
   collection index, rare-pull announcements
-- ✅ **Camp duels** - plots, cell-picked placement, roles + counter wheel,
-  deterministic battles with animated replays, W/L/streak on the camp sign
+- ✅ **Camp duels** - plots, cell-picked placement, stat-based attrition
+  battles under a hard deploy budget, animated replays with live HP bars,
+  W/L/streak on the camp sign
 - 🔨 **Building & economy** - spend salvage to build and upgrade camp
   structures
 - 🔨 **Open-world expansion** - new zones across the seabed, scavenger NPCs,
