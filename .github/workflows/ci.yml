@@ -40,5 +40,8 @@ jobs:
           unzip -o lune.zip
           chmod +x lune
           ./lune run tests/run.luau
+          # Balance sim doubles as a smoke test: it asserts archetype
+          # armies stay budget-legal and exercises the resolver at scale.
+          ./lune run tools/balance.luau
         env:
           LUNE_VERSION: 0.10.5
