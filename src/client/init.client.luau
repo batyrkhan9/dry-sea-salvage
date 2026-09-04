@@ -46,6 +46,11 @@ InventoryUI.onInventoryRequested(function()
 	return getInventoryFunction:InvokeServer()
 end)
 
+-- Relics panel asks what's deployed (for the budget readout)
+InventoryUI.onCampRequested(function()
+	return getCampRelicsFunction:InvokeServer()
+end)
+
 -- Relics panel asks to merge -> server decides; reuse the roll popup
 -- for the reveal, then refresh the panel to show new counts
 InventoryUI.onMergeRequested(function(relicName)

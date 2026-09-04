@@ -90,11 +90,16 @@ listLayout.Parent = list
 -- ---------- callbacks from the entry script ----------
 
 local fetchInventory: (() -> { [string]: number })? = nil
+local fetchCamp: (() -> { { relicName: string } })? = nil
 local requestMerge: ((relicName: string) -> ())? = nil
 local requestPlace: ((relicName: string) -> ())? = nil
 
 function InventoryUI.onInventoryRequested(fetch: () -> { [string]: number })
 	fetchInventory = fetch
+end
+
+function InventoryUI.onCampRequested(fetch: () -> { { relicName: string } })
+	fetchCamp = fetch
 end
 
 function InventoryUI.onMergeRequested(merge: (relicName: string) -> ())
@@ -201,6 +206,13 @@ function InventoryUI.refresh()
 		return
 	end
 	local inventory = fetchInventory()
+
+	-- Persistent budget readout in the header, so "how many points do I
+	-- have left at camp" never requires entering placement mode.
+	if fetchCamp ~= nil then
+		local used = RelicUtil.armyCost(fetchCamp())
+		title.Text = ("RELICS · camp %d/%d pt"):format(used, Config.Duel.budget)
+	end
 
 	for _, child in list:GetChildren() do
 		if child:IsA("Frame") then
