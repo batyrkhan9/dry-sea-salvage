@@ -69,8 +69,8 @@ popupStroke.Parent = popup
 local relicLabel = Instance.new("TextLabel")
 relicLabel.Name = "RelicName"
 relicLabel.AnchorPoint = Vector2.new(0.5, 0)
-relicLabel.Position = UDim2.fromScale(0.5, 0.18)
-relicLabel.Size = UDim2.fromScale(0.9, 0.4)
+relicLabel.Position = UDim2.fromScale(0.5, 0.12)
+relicLabel.Size = UDim2.fromScale(0.9, 0.36)
 relicLabel.BackgroundTransparency = 1
 relicLabel.Font = Enum.Font.GothamBold
 relicLabel.TextScaled = true
@@ -80,12 +80,25 @@ relicLabel.Parent = popup
 local rarityLabel = Instance.new("TextLabel")
 rarityLabel.Name = "RarityName"
 rarityLabel.AnchorPoint = Vector2.new(0.5, 0)
-rarityLabel.Position = UDim2.fromScale(0.5, 0.58)
-rarityLabel.Size = UDim2.fromScale(0.9, 0.28)
+rarityLabel.Position = UDim2.fromScale(0.5, 0.48)
+rarityLabel.Size = UDim2.fromScale(0.9, 0.24)
 rarityLabel.BackgroundTransparency = 1
 rarityLabel.Font = Enum.Font.Gotham
 rarityLabel.TextScaled = true
 rarityLabel.Parent = popup
+
+-- Combat identity of the pulled relic: role and stats, so a new pull's
+-- value is readable the moment it appears.
+local statsLabel = Instance.new("TextLabel")
+statsLabel.Name = "RelicStats"
+statsLabel.AnchorPoint = Vector2.new(0.5, 0)
+statsLabel.Position = UDim2.fromScale(0.5, 0.72)
+statsLabel.Size = UDim2.fromScale(0.9, 0.18)
+statsLabel.BackgroundTransparency = 1
+statsLabel.Font = Enum.Font.Gotham
+statsLabel.TextScaled = true
+statsLabel.TextColor3 = Color3.fromRGB(200, 185, 155)
+statsLabel.Parent = popup
 
 -- Pity progress readout, tucked under the salvage button. Hidden until
 -- the first roll result arrives (we only know the counter server-side).
@@ -185,6 +198,9 @@ function RollUI.showResult(relic: string, rarityName: string)
 	rarityLabel.Text = rarityName
 	rarityLabel.TextColor3 = color
 	popupStroke.Color = color
+
+	local def = RelicUtil.defOf(relic)
+	statsLabel.Text = if def then ("%s · HP %d · ATK %d · %dpt"):format(def.role, def.hp, def.atk, def.cost) else ""
 
 	Sound.play(Config.Sounds.RollResult[rarityName] or 0)
 
