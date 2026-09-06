@@ -21,7 +21,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           version: v2.5.2
-          args: --check src tests
+          args: --check src tests tools
 
       - name: Selene (lint)
         run: |
