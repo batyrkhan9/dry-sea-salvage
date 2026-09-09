@@ -128,9 +128,16 @@ local function makeRelicRow(relicName: string, found: boolean, layoutOrder: numb
 	row.Font = Enum.Font.Gotham
 	row.TextSize = 14
 	row.TextXAlignment = Enum.TextXAlignment.Left
+	row.TextTruncate = Enum.TextTruncate.AtEnd
 	if found then
+		-- Discovered relics show their combat identity, so the index
+		-- doubles as an army-planning sheet ("what should I merge
+		-- toward?"). Undiscovered ones keep their mystery.
 		row.TextColor3 = Color3.fromRGB(240, 230, 210)
-		row.Text = "  " .. relicName
+		local def = RelicUtil.defOf(relicName)
+		row.Text = if def
+			then ("  %s   %s · HP %d · ATK %d · %dpt"):format(relicName, def.role, def.hp, def.atk, def.cost)
+			else "  " .. relicName
 	else
 		row.TextColor3 = Color3.fromRGB(110, 100, 90)
 		row.Text = "  ???"
