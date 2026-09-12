@@ -83,8 +83,8 @@ inventoryChangedEvent.OnClientEvent:Connect(function()
 end)
 
 -- Someone on the server pulled something rare -> banner for everyone
-announceEvent.OnClientEvent:Connect(function(playerName, relic, rarityName)
-	AnnouncementUI.show(playerName, relic, rarityName)
+announceEvent.OnClientEvent:Connect(function(playerName, relic, rarityName, verb)
+	AnnouncementUI.show(playerName, relic, rarityName, verb)
 end)
 
 -- Duel flow: prompts, notices, and results come from the server; the

@@ -98,9 +98,11 @@ announceEvent.Name = "AnnounceEvent"
 announceEvent.Parent = ReplicatedStorage
 
 -- Fires the server-wide banner if this rarity is announcement-worthy.
-local function maybeAnnounce(player, relic: string, rarityName: string)
+-- verb: "salvaged" for rolls, "forged" for merges - the banner should
+-- say how the relic was actually obtained.
+local function maybeAnnounce(player, relic: string, rarityName: string, verb: string)
 	if Config.AnnounceRarities[rarityName] then
-		announceEvent:FireAllClients(player.Name, relic, rarityName)
+		announceEvent:FireAllClients(player.Name, relic, rarityName, verb)
 	end
 end
 
@@ -119,7 +121,7 @@ rollEvent.OnServerEvent:Connect(function(player)
 	local count = InventoryService.addRelic(player, result.relic)
 	print(player.Name, "salvaged:", result.relic, "(" .. result.rarityName .. ") - now owns", count or "?")
 	rollEvent:FireClient(player, result.relic, result.rarityName, result.rollsUntilPity)
-	maybeAnnounce(player, result.relic, result.rarityName)
+	maybeAnnounce(player, result.relic, result.rarityName, "salvaged")
 end)
 
 mergeFunction.OnServerInvoke = function(player, relicName)
@@ -131,7 +133,7 @@ mergeFunction.OnServerInvoke = function(player, relicName)
 		return nil
 	end
 	print(player.Name, "merged into:", result.relic, "(" .. result.rarityName .. ")")
-	maybeAnnounce(player, result.relic, result.rarityName)
+	maybeAnnounce(player, result.relic, result.rarityName, "forged")
 	return result
 end
 

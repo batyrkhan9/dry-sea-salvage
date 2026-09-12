@@ -65,6 +65,7 @@ type Announcement = {
 	playerName: string,
 	relic: string,
 	rarityName: string,
+	verb: string, -- "salvaged" (rolled) or "forged" (merged)
 }
 
 local queue: { Announcement } = {}
@@ -79,7 +80,7 @@ local function showNext()
 	showing = true
 
 	local color = RelicUtil.rarityColor(nextUp.rarityName)
-	bannerText.Text = ("%s salvaged %s (%s)!"):format(nextUp.playerName, nextUp.relic, nextUp.rarityName)
+	bannerText.Text = ("%s %s %s (%s)!"):format(nextUp.playerName, nextUp.verb, nextUp.relic, nextUp.rarityName)
 	bannerText.TextColor3 = color
 	bannerStroke.Color = color
 
@@ -110,8 +111,13 @@ local function showNext()
 	showNext()
 end
 
-function AnnouncementUI.show(playerName: string, relic: string, rarityName: string)
-	table.insert(queue, { playerName = playerName, relic = relic, rarityName = rarityName })
+function AnnouncementUI.show(playerName: string, relic: string, rarityName: string, verb: string?)
+	table.insert(queue, {
+		playerName = playerName,
+		relic = relic,
+		rarityName = rarityName,
+		verb = verb or "salvaged", -- older servers send no verb
+	})
 	if not showing then
 		-- task.spawn because showNext blocks (tweens + hold) and the
 		-- caller is usually a RemoteEvent handler that shouldn't stall.
