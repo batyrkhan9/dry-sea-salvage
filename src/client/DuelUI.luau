@@ -45,12 +45,15 @@ noticeCorner.Parent = notice
 
 local noticeShowId = 0
 
-function DuelUI.showNotice(text: string)
+-- seconds is optional: quick notices default to 3, but duel results
+-- pass longer - a scoreline that vanishes right after a battle is easy
+-- to miss.
+function DuelUI.showNotice(text: string, seconds: number?)
 	noticeShowId += 1
 	local showId = noticeShowId
 	notice.Text = text
 	notice.Visible = true
-	task.delay(3, function()
+	task.delay(seconds or 3, function()
 		if noticeShowId == showId then
 			notice.Visible = false
 		end
@@ -164,7 +167,7 @@ function DuelUI.showResult(payload: {
 	else
 		text = ("%s beat you. (%d-%d)"):format(opponent, mySurvivors, theirSurvivors)
 	end
-	DuelUI.showNotice(text)
+	DuelUI.showNotice(text, 7)
 end
 
 return DuelUI
