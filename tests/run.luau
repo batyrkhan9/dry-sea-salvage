@@ -226,10 +226,20 @@ end)
 
 test("reconcile keeps an existing duel record", function()
 	local data = PlayerDataSchema.reconcile({
-		duelRecord = { wins = 5, losses = 2, streak = 3 },
+		duelRecord = { wins = 5, losses = 2, streak = 3, bestStreak = 4 },
 	})
 	expectEqual(data.duelRecord.wins, 5)
 	expectEqual(data.duelRecord.streak, 3)
+	expectEqual(data.duelRecord.bestStreak, 4)
+end)
+
+test("reconcile seeds bestStreak from streak on pre-leaderboard saves", function()
+	-- duelRecord exists but predates bestStreak: the nested field gets
+	-- its own migration (the generic fill-in only covers top level).
+	local data = PlayerDataSchema.reconcile({
+		duelRecord = { wins = 5, losses = 2, streak = 3 },
+	})
+	expectEqual(data.duelRecord.bestStreak, 3)
 end)
 
 test("reconcile stamps version-less saves as schema 1, not current", function()

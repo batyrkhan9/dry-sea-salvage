@@ -21,6 +21,7 @@ export type DuelRecord = {
 	wins: number,
 	losses: number,
 	streak: number, -- current consecutive wins; resets on a loss
+	bestStreak: number, -- longest streak ever; feeds the global leaderboard
 }
 
 export type PlayerData = {
@@ -40,7 +41,7 @@ function PlayerDataSchema.defaultData(): PlayerData
 		discovered = {},
 		rollsSinceRare = 0,
 		campRelics = {},
-		duelRecord = { wins = 0, losses = 0, streak = 0 },
+		duelRecord = { wins = 0, losses = 0, streak = 0, bestStreak = 0 },
 	}
 end
 
@@ -65,6 +66,13 @@ function PlayerDataSchema.reconcile(stored: any): PlayerData
 			stored[key] = defaultValue
 		end
 	end
+	-- The generic fill-in above only covers TOP-LEVEL fields, so a field
+	-- added inside an existing table needs its own line: saves from
+	-- before bestStreak existed seed it from their current streak.
+	if stored.duelRecord.bestStreak == nil then
+		stored.duelRecord.bestStreak = stored.duelRecord.streak or 0
+	end
+
 	-- Owning a relic implies having discovered it. This also migrates
 	-- saves that predate `discovered` - their index starts from what
 	-- they currently hold instead of empty.
